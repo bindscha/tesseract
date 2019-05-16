@@ -1,0 +1,189 @@
+#include "graph.hpp"
+#include "parallel_ligra.hpp"
+
+uint64_t NB_NODES;
+uint64_t NB_EDGES;
+
+bool SYMMETRIC = false;
+//struct edge* edges_ts;
+struct edge_full* edges_full;
+struct edge_ts* edges;
+uint32_t *degree;
+uint32_t *degree_in;
+size_t* adj_offsets;
+size_t* adj_offsets_in;
+uint32_t* active;//[NB_NODES];
+uint32_t* active_next;//[NB_NODES];
+uint64_t no_active, no_active_next;
+bool* in_frontier;
+
+int clique_fd;
+char* degree_file;
+char* input_file;
+char* update_file;
+bool do_updates = 0;
+
+
+bool has_edge_ts(uint32_t src, uint32_t dst, uint32_t ts,uint32_t* ts2){
+  uint32_t tmp_dst, ts_t;
+  FOREACH_EDGE_TS(src, tmp_dst, ts_t)
+    if(dst == tmp_dst) {
+      if (ts_t <= ts) {
+        *ts2 = ts_t;
+        return true;
+      }
+    }
+//    if(ts_t > ts) break;
+  ENDFOR
+  return false;
+}
+
+bool has_edge_ts_set(uint32_t src, uint32_t dst,uint32_t* ts2){
+  uint32_t tmp_dst, ts_t;
+  FOREACH_EDGE_TS(src, tmp_dst, ts_t)
+    if(dst == tmp_dst) {
+        *ts2 = ts_t;
+        return true;
+
+    }
+
+  ENDFOR
+  return false;
+}
+bool has_edge(const uint32_t src, const uint32_t dst){
+  uint32_t tmp_dst;
+#if SYM == 1
+  FOREACH_EDGE_BACK(src,tmp_dst)//_BACK(src, tmp_dst)
+    if(dst == tmp_dst )
+      return true;
+  ENDFOR
+
+#else
+  FOREACH_EDGE(src,tmp_dst)//_BACK(src, tmp_dst)
+  if(dst == tmp_dst )
+    return true;
+  ENDFOR
+#endif
+  return false;
+}
+
+
+void init_adj_degree(){
+  int fd = open(degree_file, O_RDONLY, O_NOATIME);
+  if(fd == -1) {
+    perror("File open failed");
+    exit(1);
+
+  }
+//  uint32_t to_mmap = NB_NODES* sizeof(*adj_offsets);
+//  printf("to_mmap %u\n",to_mmap);
+//  if(to_mmap %4096 !=0){
+//    printf("failed to mmap\n");
+//    to_mmap = to_mmap + 4096 - to_mmap %4096;
+//
+//  }
+
+
+  adj_offsets = (size_t*) calloc(NB_NODES, sizeof(size_t));
+  size_t b_read = read(fd, adj_offsets, NB_NODES * sizeof(size_t));
+  assert(b_read == NB_NODES * sizeof(size_t));
+//  adj_offsets = (size_t*) mmap(NULL, to_mmap, PROT_READ , MAP_PRIVATE, fd,0);
+
+//  if(adj_offsets == MAP_FAILED)
+//    perror("Failed to mmap offsets");
+
+  for(uint32_t i = 0; i < NB_NODES - 1; i++){
+    assert(degree[i] == 0);
+    degree[i] = adj_offsets[i+1] - adj_offsets[i];
+  }
+  degree[NB_NODES - 1] = NB_EDGES - adj_offsets[NB_NODES - 1];
+
+  uint64_t n_edges = 0;
+  for(uint32_t i = 0; i <NB_NODES;i++){
+//    for(uint32_t idx = 0; idx < degree[i];idx++){
+      n_edges += degree[i];
+//    }
+  }
+  assert(n_edges == NB_EDGES);
+}
+
+
+
+
+
+void init(bool _mmap){
+  degree = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
+  degree_in = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
+
+  //Open edge file
+  int fd = open(input_file, O_RDWR);
+  if(fd == -1) {
+    perror("Failed to open input file");
+    exit(1);
+  }
+  struct stat sb;
+  fstat(fd, &sb);
+
+
+  NB_EDGES = (size_t) sb.st_size / sizeof(struct edge_full);
+
+  active= (uint32_t*) malloc(NB_EDGES* sizeof(uint32_t));
+
+  if(_mmap){
+    edges_full = (struct edge_full*) mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+
+    int fd2 = open("/media/nvme/output_f", O_RDWR|O_CREAT|O_NOATIME|O_LARGEFILE);
+    fallocate(fd2, 0, 0, NB_EDGES* sizeof(edge_ts));
+    if(fd2 == -1) {
+      perror("Failed to open out file");
+      exit(1);
+    }
+    edges = (struct edge_ts*) mmap(NULL, NB_EDGES* sizeof(edge_ts), PROT_READ| PROT_WRITE, MAP_SHARED, fd2, 0);
+    if(edges == MAP_FAILED){
+      perror("Failed mapping");
+      exit(1);
+    }
+    printf("NB_EDGES  %lu \n",NB_EDGES);
+  }
+  else {
+    edges_full = (struct edge_full*) malloc(sb.st_size);
+    size_t b_read = 0;
+    while(b_read <sb.st_size){
+      size_t b_r = read(fd, edges_full+b_read/sizeof(struct edge_full), sb.st_size - b_read);
+      assert(b_r!=-1);
+      b_read += b_r;
+  }
+      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+    printf("NB_EDGES  %lu \n",NB_EDGES);
+  }
+
+
+  init_adj_degree();
+
+
+  assert(NULL!=edges);
+  if(!do_updates) {
+  for(uint32_t i = 0; i <NB_NODES;i++){
+    for(uint32_t  j = 0; j <degree[i];j++){
+      assert(edges_full[adj_offsets[i] + j].src == i);
+
+      edges[adj_offsets[i] + j].src= i;
+      edges[adj_offsets[i] + j].dst = edges_full[adj_offsets[i] + j].dst;
+      edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i]+ j;
+      if(edges_full[adj_offsets[i]  +j].dst < i){
+        if(! has_edge_ts_set(edges[adj_offsets[i]  +j].dst,i,&edges[adj_offsets[i] + j].ts)){
+          edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i] +j;
+        }
+      }
+      else
+        edges[adj_offsets[i] + j].ts = adj_offsets[i] + j;
+      }
+    }
+  }
+
+  no_active_next = 0;
+
+}
+
+
