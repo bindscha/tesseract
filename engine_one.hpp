@@ -404,5 +404,5 @@ public:
 
 
 //TODO Dynamic engine driver, should have barrier with Update engine to wait for updates while not signalled with stop() fr
-//from the interface 
+//from the interface
 #endif //TESSERACT_ENGINE_ONE_HPP
