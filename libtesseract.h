@@ -22,7 +22,14 @@ extern "C" typedef struct {
     WorkerId worker_id;
     uint64_t num_workers;
     AlgorithmId algorithm_id;
+    int no_threads;
 } Configuration;
+
+extern "C" typedef struct{
+    char* input_file;
+    char* degree_file;
+    size_t nb_nodes;
+}GraphInputFiles;
 
 extern "C" typedef enum { VertexAdd = 0, VertexDel = 1, EdgeAdd = 2, EdgeDel = 3, VertexLabelMod = 4, EdgeLabelMod = 5 } GraphUpdateType;
 
@@ -45,14 +52,14 @@ extern "C" typedef struct {
     AdjacencyMatrix edges_mat;
     AdjacencyMatrix ts_mat;
     OutputStatus status;
-} Embedding;
+} EmbeddingTmp;
 
 typedef void (*init_fun_ptr_t)();
-typedef void (*pfilter_fun_ptr_t)(const Embedding *embedding, const VertexId vertexId);
+typedef bool (*pfilter_fun_ptr_t)(const EmbeddingTmp *embedding, const VertexId vertexId);
 typedef void (*pupdate_fun_ptr_t)();
-typedef void (*filter_fun_ptr_t)(const Embedding *embedding);
-typedef void (*match_fun_ptr_t)(const Embedding *embedding);
-typedef void (*output_fun_ptr_t)(const Embedding *pre_embedding, const Embedding *post_embedding);
+typedef bool (*filter_fun_ptr_t)(const EmbeddingTmp *embedding);
+typedef void (*match_fun_ptr_t)(const EmbeddingTmp *embedding);
+typedef void (*output_fun_ptr_t)(const EmbeddingTmp *pre_embedding, const EmbeddingTmp *post_embedding);
 
 typedef struct {
     init_fun_ptr_t init;
@@ -66,6 +73,8 @@ typedef struct {
 extern "C" typedef void (*output_callback_fun_t)(const void *buffer, const size_t num_entries);
 
 extern "C" void init(const Configuration *configuration);
+
+extern "C" void setGraphInputFiles(const GraphInputFiles* graphInput);
 
 extern "C" void set_algorithm(const Algorithm *algorithm);
 
@@ -90,6 +99,10 @@ extern "C" void batch_new(const GraphUpdate *buffer, size_t num_entries);
 extern "C" void set_output_callback(output_callback_fun_t f);
 
 extern "C" void unset_output_callback();
+extern Algorithm algorithm;
+
+//TODO Add functions for initializing the update buffer structure
+
 
 //
 // END NEW API

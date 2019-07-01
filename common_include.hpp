@@ -33,9 +33,4 @@
 
 #define K 4
 //extern int K;
-
-#define SYM 1
-
-
-
 #endif

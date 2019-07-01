@@ -606,7 +606,7 @@ end:
          if(initial_chunk != 0 && do_updates){
             memset(degree,0, NB_NODES*sizeof(uint32_t));
             for (int i = 0; i < no_threads - 1; i++) {
-               threads[i] = new std::thread(&(u_buf->preload_edges_before_update), u_buf, edges_full, (i + 1), edges, (int)no_threads);
+               threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, u_buf, edges_full, (i + 1), edges, (int)no_threads);
             }
             u_buf->preload_edges_before_update(edges_full, 0, edges,(int)no_threads);
             for (int i = 0; i < no_threads - 1; i++) {

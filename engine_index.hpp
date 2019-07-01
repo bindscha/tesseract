@@ -178,6 +178,7 @@ public:
         uint32_t v_id = embedding->last();
         uint32_t dst;
 
+
         FOREACH_EDGE_FWD(v_id, dst)
             if (degree[dst] < step) { //if(!algo->prefilter(dst)){ // XXX: prefilter should receive embedding or step!!
                 continue;

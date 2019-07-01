@@ -8,7 +8,7 @@ class FilterCache:public GraphCache<T>{
     int no_k_neigh = 2; //Number of neighbours to put in filter cache
     A* algo;
 public:
-    FilgerCache(){}
+    FilterCache(){}
     FilterCache(int k_neigh_size, size_t capacity, A* _algo):GraphCache<uint32_t>(capacity),no_k_neigh(k_neigh_size) { 
       algo = _algo;
     }

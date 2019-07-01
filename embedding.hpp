@@ -5,6 +5,7 @@
 #include <iostream>
 #include <set>
 #include <stdint.h>
+#include "graph.hpp"
 
 
 #define EDGE_TIMESTAMPS

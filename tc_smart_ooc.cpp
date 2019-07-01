@@ -25,7 +25,6 @@
  * Note this will not work if the adjacency list has the same neighbour more than once.
  *
  *  */
-#include "parallel_ligra.hpp"
 #include "algo_api.hpp"
 //#include "radixSort_ligra.hpp"
 #include "barrier.hpp"

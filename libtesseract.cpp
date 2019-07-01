@@ -1,8 +1,10 @@
 #include "libtesseract.h"
-
 #include <stdlib.h>
 #include <iostream>
-
+#include "engine_one.hpp"
+#include "updateBuffers.hpp"
+EngineDriver* e;
+UpdateBuffer* updateBuf;
 //
 // Globals
 //
@@ -14,8 +16,8 @@ output_callback_fun_t output_callback = NULL;
 // Helper functions
 //
 
-Embedding *generate_random_embeddings(const size_t num) {
-    Embedding *es = (Embedding *)calloc(num, sizeof(Embedding));
+EmbeddingTmp *generate_random_embeddings(const size_t num) {
+    EmbeddingTmp *es = (EmbeddingTmp *)calloc(num, sizeof(EmbeddingTmp));
     for (size_t i = 0; i < num; ++i) {
         size_t num_vertices = rand() % MAX_EMBEDDING_SIZE;
         for (size_t j = 0; j < num_vertices; ++j) {
@@ -33,7 +35,7 @@ Embedding *generate_random_embeddings(const size_t num) {
 void output_random_stuff() {
     if(output_callback != NULL) {
         const size_t num = 1 + rand() % 10;
-        const Embedding *es = generate_random_embeddings(num);
+        const EmbeddingTmp *es = generate_random_embeddings(num);
         output_callback(es, num);
     }
 }
@@ -44,14 +46,45 @@ void output_random_stuff() {
 
 void init(const Configuration *configuration) {
     printf("Initialized Tesseract worker %lu (out of %lu) for algorithm %lu\n", configuration->worker_id, configuration->num_workers, configuration->algorithm_id);
+    switch(configuration->algorithm_id){
+        case 0:
+        {
+            e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(no_threads,true);
+            break;
+        }
+        case 1:
+        {
+            e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
+            break;
+        }
+        default: {
+            printf("You need to have a valie algo id! \n");
+            exit(1);
+        }
+    }
 }
 
+void setGraphInputFiles(const GraphInputFiles* graphInput){
+    input_file = graphInput->input_file;
+    degree_file = graphInput->degree_file;
+    NB_NODES  = graphInput->nb_nodes;
+
+    init_graph_input(false); //this means that the graph is loaded in memory and offsets are not mmaped
+}
 void set_algorithm(const Algorithm *algorithm) {
 
 }
 
 void start() {
-    printf("Started execution!\n");
+    printf("Starting computation...\n");
+    auto start = std::chrono::high_resolution_clock::now();
+
+    e->execute_app();
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    std::cout << "[TIME] Runtime: " << diff.count() << " seconds\n";
+    printf("Finished computation!\n");
+    printf("[STAT] no_active post-compute: %lu\n", no_active);
 }
 
 void stop() {

@@ -5,9 +5,6 @@
 
 #include "barrier.hpp"
 #include "algo_api.hpp"
-
-
-#include "utils.hpp"
 #include "graph.hpp"
 
 //#include "clique_vector.hpp"

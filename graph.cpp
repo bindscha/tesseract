@@ -1,5 +1,5 @@
 #include "graph.hpp"
-#include "parallel_ligra.hpp"
+//#include "parallel_ligra.hpp"
 
 uint64_t NB_NODES;
 uint64_t NB_EDGES;
@@ -52,18 +52,21 @@ bool has_edge_ts_set(uint32_t src, uint32_t dst,uint32_t* ts2){
 }
 bool has_edge(const uint32_t src, const uint32_t dst){
   uint32_t tmp_dst;
-#if SYM == 1
-  FOREACH_EDGE_BACK(src,tmp_dst)//_BACK(src, tmp_dst)
-    if(dst == tmp_dst )
-      return true;
-  ENDFOR
 
-#else
   FOREACH_EDGE(src,tmp_dst)//_BACK(src, tmp_dst)
   if(dst == tmp_dst )
     return true;
   ENDFOR
-#endif
+
+  return false;
+}
+bool has_edge_sym(const uint32_t src, const uint32_t dst){
+  uint32_t tmp_dst;
+
+  FOREACH_EDGE_BACK(src,tmp_dst)//_BACK(src, tmp_dst)
+    if(dst == tmp_dst )
+      return true;
+  ENDFOR
   return false;
 }
 
@@ -92,7 +95,7 @@ void init_adj_degree(){
 //  if(adj_offsets == MAP_FAILED)
 //    perror("Failed to mmap offsets");
 
-  for(uint32_t i = 0; i < NB_NODES - 1; i++){
+   for(uint32_t i = 0; i < NB_NODES - 1; i++){
     assert(degree[i] == 0);
     degree[i] = adj_offsets[i+1] - adj_offsets[i];
   }
@@ -111,7 +114,7 @@ void init_adj_degree(){
 
 
 
-void init(bool _mmap){
+void init_graph_input(bool _mmap){
   degree = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
   degree_in = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
 

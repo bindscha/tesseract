@@ -93,15 +93,7 @@ SYMMETRIC = true;
   printf("no _active = %u\n",no_active);
   auto start = std::chrono::high_resolution_clock::now();
   e->execute_app();
-
-
-
-
-
-
   printf("Number active %lu, %d - cliques %lu\n", no_active,K,no_triangles);
-
-
   e->cancel_compute();
 
 //  printf("All done\n");

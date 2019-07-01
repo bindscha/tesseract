@@ -1,9 +1,11 @@
 #include "tesseract.hpp"
+#include "libtesseract.h"
+#include <unordered_map>
 //Engine<Embedding<uint32_t>>
-
+Algorithm algorithm;
 bool _mmap = false;
 bool indexed = false;
-
+EngineDriver* e;
 int c;
 std::string tmp;
 size_t b_size = 0,initial_chunk = 0;
@@ -53,10 +55,10 @@ void init_tesseract( int _w_id =0,int _no_workers=1,bool _mmap=0){
   no_active_next = 0;
 //  e->init();
   init(_mmap);
-  init_thread_d_gen<Embedding<uint32_t>>(clique_fd);
+  init_thread_d_gen<Embedding<uint32_t>>();
+  set_fd(clique_fd);
 
 
-  printf("[STAT] no_active pre-compute: %lu\n", no_active);
 
 }
 
@@ -90,93 +92,105 @@ void start_exec(){
   //  _no_workers = no_threads;
   switch(algo){
     case 0: {
-      assert(SYM == 1);
       printf("Looking for %d-cliques...\n", K);
-      Engine <Embedding<uint32_t>, CliqueFindE> *e = new Engine <Embedding<uint32_t>, CliqueFindE>(b_size,
-                                                                                                   initial_chunk,
-                                                                                                   new CliqueFindE(),
-                                                                                                   w_id, no_workers);
+//      Engine <Embedding<uint32_t>, CliqueFindE> *e = new Engine <Embedding<uint32_t>, CliqueFindE>(b_size,
+//                                                                                                      initial_chunk,
+//                                                                                                   new CliqueFindE(),
+
+
+//    algorithm.pfilter=&clique_prefilter;//(CliqueFindE::prefilter);
+//    algorithm.filter=&clique_filter;//(CliqueFindE::filter);
+      e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(no_threads,true);//    w_id, no_workers);
       if (!do_updates)
-        e->algo->activate_nodes();
-      printf("Starting computation...\n");
-      auto start = std::chrono::high_resolution_clock::now();
+       CliqueFindE::activate_nodes();
 
-      e->execute_app();
 
-      printf("Finished computation!\n");
-      printf("[STAT] no_active post-compute: %lu\n", no_active);
-      printf("Results:\n");
-      printf("  %d-cliques found: %lu\n", K, no_triangles);
-
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> diff = end - start;
-      std::cout << "  Runtime: " << diff.count() << " seconds\n";
-
-      e->algo->output();
+     // e->algo->output();
 //      e->algo = new CliqueFindE();
       //  e->algo = new CliqueIndex();
     }
       break;
-    case 1: {
-      assert(SYM == 0);
-      Engine <Embedding<uint32_t>, MotifCountingE> *e = new Engine <Embedding<uint32_t>, MotifCountingE>(b_size,
-                                                                                                         initial_chunk,
-                                                                                                         new MotifCountingE(),
-                                                                                                         w_id,
-                                                                                                          no_workers);
-      printf("Looking for %d-motifs...\n", K);
-      if (!do_updates)
-        e->algo->activate_nodes();
-      printf("Starting computation...\n");
-      auto start = std::chrono::high_resolution_clock::now();
+      case 1:{
+          e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
+          if(!do_updates) {
+              MotifCountingE::activate_nodes();
 
-      e->execute_app();
-
-      printf("Finished computation!\n");
-      printf("[STAT] no_active post-compute: %lu\n", no_active);
-      printf("Results:\n");
-      printf("  %d-cliques found: %lu\n", K, no_triangles);
-
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> diff = end - start;
-      std::cout << "  Runtime: " << diff.count() << " seconds\n";
-
-      e->algo->output();
-    }
-      break;
-    case 2: {
-      assert(SYM == 1);
-      Engine <Embedding<uint32_t>, ColorCliqueE> *e = new Engine <Embedding<uint32_t>, ColorCliqueE>(b_size,
-                                                                                                     initial_chunk,
-                                                                                                     new ColorCliqueE(),
-                                                                                                     w_id, no_workers);
-//      e->algo = new MotifCountingE();
-
-      printf("Looking for %d-color cliques...\n", K);
-      if (!do_updates)
-        e->algo->activate_nodes();
-      printf("Starting computation...\n");
-      auto start = std::chrono::high_resolution_clock::now();
-
-      e->execute_app();
-
-      printf("Finished computation!\n");
-      printf("[STAT] no_active post-compute: %lu\n", no_active);
-      printf("Results:\n");
-      printf("  %d-cliques found: %lu\n", K, no_triangles);
-
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> diff = end - start;
-      std::cout << "  Runtime: " << diff.count() << " seconds\n";
-
-      e->algo->output();
-    }
-      break;
+              printf("[STAT] no_active pre-compute: %lu\n", no_active);
+          }
+          break;
+      }
+//    case 1: {
+//      assert(SYM == 0);
+//      Engine <Embedding<uint32_t>, MotifCountingE> *e = new Engine <Embedding<uint32_t>, MotifCountingE>(b_size,
+//                                                                                                         initial_chunk,
+//                                                                                                         new MotifCountingE(),
+//                                                                                                         w_id,
+//                                                                                                          no_workers);
+//      printf("Looking for %d-motifs...\n", K);
+//      if (!do_updates)
+//        e->algo->activate_nodes();
+//      printf("Starting computation...\n");
+//      auto start = std::chrono::high_resolution_clock::now();
+//
+//      e->execute_app();
+//
+//      printf("Finished computation!\n");
+//      printf("[STAT] no_active post-compute: %lu\n", no_active);
+//      printf("Results:\n");
+//      printf("  %d-cliques found: %lu\n", K, no_triangles);
+//
+//      auto end = std::chrono::high_resolution_clock::now();
+//      std::chrono::duration<double> diff = end - start;
+//      std::cout << "  Runtime: " << diff.count() << " seconds\n";
+//
+//      e->algo->output();
+//    }
+//      break;
+//    case 2: {
+//      assert(SYM == 1);
+//      Engine <Embedding<uint32_t>, ColorCliqueE> *e = new Engine <Embedding<uint32_t>, ColorCliqueE>(b_size,
+//                                                                                                     initial_chunk,
+//                                                                                                     new ColorCliqueE(),
+//                                                                                                     w_id, no_workers);
+////      e->algo = new MotifCountingE();
+//
+//      printf("Looking for %d-color cliques...\n", K);
+//      if (!do_updates)
+//        e->algo->activate_nodes();
+//      printf("Starting computation...\n");
+//      auto start = std::chrono::high_resolution_clock::now();
+//
+//      e->execute_app();
+//
+//      printf("Finished computation!\n");
+//      printf("[STAT] no_active post-compute: %lu\n", no_active);
+//      printf("Results:\n");
+//      printf("  %d-cliques found: %lu\n", K, no_triangles);
+//
+//      auto end = std::chrono::high_resolution_clock::now();
+//      std::chrono::duration<double> diff = end - start;
+//          std::cout << "  Runtime: " << diff.count() << " seconds\n";
+//
+//      e->algo->output();
+//    }
+//      break;
     default:
       printf("Need to define an algo \n");
       exit(1);
   }
+    printf("Starting computation...\n");
+    auto start = std::chrono::high_resolution_clock::now();
 
+
+    e->execute_app();
+    printf("Finished computation!\n");
+    printf("[STAT] no_active post-compute: %lu\n", no_active);
+    printf("Results:\n");
+    //  printf("  %d-cliques found: %lu\n", K, no_triangles);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    std::cout << "  Runtime: " << diff.count() << " seconds\n";
 
 }
 
@@ -197,9 +211,9 @@ int main(int argc, char** argv)  {
       case 'd':
         degree_file = optarg;
         break;
-      case 'v':
-        EXPLORE_MODE = VERTEX; //exp_mode[atoi(optarg)];
-        break;
+//      case 'v':
+//        EXPLORE_MODE = VERTEX; //exp_mode[atoi(optarg)];
+//        break;
       case 'i':
         indexed = true; //exp_mode[atoi(optarg)];
         break;
@@ -219,7 +233,7 @@ int main(int argc, char** argv)  {
       case 'u':
         do_updates = 1;
         update_file = optarg;
-        EXPLORE_MODE =MIDDLE;
+//        EXPLORE_MODE =MIDDLE;
         printf("Running updates \n");
         break;
       case 'c':

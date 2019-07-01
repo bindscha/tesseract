@@ -1,6 +1,7 @@
 #ifndef __THREAD_DATA_H__
 #define __THREAD_DATA_H__
 
+#include "Pattern.hpp"
 /*
  * Thread sync data and thread work queues
  *
@@ -44,7 +45,7 @@ struct thread_buf_t_{
 
 
 //extern thread_buf_t_* thread_bufs_gen;
-thread_buf_t_<Embedding<VertexId>>* thread_bufs_gen;
+thread_buf_t_<Pattern<uint32_t, edge_full> >* thread_bufs_gen;
 
 void add_item_in_buf(clique_vector* cliques_found, clique_vector item, int tid, uint64_t* curr_cliques);
 void flush_buf(clique_vector* cliques_found,int tid, uint64_t* curr_cliques);
@@ -109,11 +110,8 @@ void init_thread_d(int c_fd){
   file_fd = c_fd;
 }
 
-inline void set_fd(int c_fd){
-    file_fd = c_fd;
-}
 template<typename T>
-void init_thread_d_gen(){
+void init_thread_d_gen(int c_fd){
   init_barrier(&xsync_begin, no_threads);
   init_barrier(&xsync_end, no_threads);
 
@@ -121,6 +119,7 @@ void init_thread_d_gen(){
   thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
 //  thread_bufs_gen = (thread_buf_t_<T>*) calloc(no_threads , sizeof(thread_buf_t_<T>));
 
+  file_fd = c_fd;
 }
 
 void flush_buf(clique_vector* cliques_found, int tid, uint64_t* curr_cliques){
