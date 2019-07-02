@@ -48,11 +48,13 @@ class UpdateBuffer{
 
     std::vector<bool>* node_bitset;
     x_barrier xsync_begin, xsync_end;
+
     size_t no_up_currently  =0;
     uint32_t batch_size = 1000;
 public:
-    edge_full* edges;
-
+    edge_full* updates;
+    x_barrier updates_ready;
+    x_barrier updates_consumed;
     uint32_t curr_batch_start = 0;
     uint32_t curr_batch_end = 0;
     uint32_t curr_ts = 0;
@@ -72,9 +74,11 @@ public:
     }
 //    uint32_t* node_ts;
     size_t no_edges;
-    UpdateBuffer(uint32_t _batch_size, edge_full* e, uint64_t _NB_EDGES, uint32_t nb_nodes, size_t _initial_chunk = 0,int n=1) :batch_size(_batch_size),  no_edges(_NB_EDGES), initial_chunk(_initial_chunk),no_threads(n), v(_NB_EDGES) {
+    UpdateBuffer(uint32_t _batch_size, uint64_t _NB_EDGES, uint32_t nb_nodes, size_t _initial_chunk = 0, int n = 1)
+            : batch_size(_batch_size), no_edges(_NB_EDGES), initial_chunk(_initial_chunk), no_threads(n), v(_NB_EDGES) {
       //      node_bitset = (std::vector<bool> *) calloc(nb_nodes, sizeof(std::vector<bool>));
-
+      init_barrier(&updates_ready, 2);
+      init_barrier(&updates_consumed, 2);
       init_barrier(&xsync_end, no_threads);
       init_barrier(&xsync_begin, no_threads);
 //      memset(degree, 0 , /)
@@ -85,25 +89,26 @@ public:
         }
       }
 
-      edges = (struct edge_full*) calloc(batch_size , sizeof(edge_full)); // TODOto replace this should be only sizeof BATCH and we have perhaps two buffers,
+      updates = (struct edge_full*) calloc(batch_size , sizeof(edge_full)); // TODOto replace this should be only sizeof BATCH and we have perhaps two buffers,
       // one for accumulating updates while updates from other are processed
       uint64_t i = 0;
       uint64_t equals = 0;
       if(shuffle)
         shuffle_edge_idx(_NB_EDGES);
 
-      no_edges = _NB_EDGES;//i;
 //      for(size_t i  = 0; i <no_edges;i++){
-//        printf("%u->%u (%u->%u)\n",edges[i].src,edges[i].dst, e[i].src,e[i].dst);
+//        printf("%u->%u (%u->%u)\n",updates[i].src,updates[i].dst, e[i].src,e[i].dst);
 //      }
-      printf("added %lu edges(%lu self loops) \n",no_edges,equals);
+      printf("added %lu updates(%lu self loops) \n",no_edges,equals);
 //      batch_size= 100000;
 //      batch_size=no_edges - 10000000;
     }
     ~UpdateBuffer(){
-      free(edges);
+      free(updates);
     }
-
+    inline void incNoUpdates(){
+        no_up_currently++;
+    }
     void preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads){
       size_t num = initial_chunk / no_threads;
 
@@ -170,8 +175,8 @@ public:
         uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
 //        if((true)){//
           if(h_src % no_workers == w_id ) {
-            this->edges[no_up_currently].src = src;
-            this->edges[no_up_currently].dst = dst;
+            this->updates[no_up_currently].src = src;
+            this->updates[no_up_currently].dst = dst;
             no_up_currently++;
           }
 

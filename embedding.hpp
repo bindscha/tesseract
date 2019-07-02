@@ -350,7 +350,7 @@ public:
             fprintf(stderr, "%lu ", vertices_[i]);
         }
         fprintf(stderr, "]");
-        fprintf(stderr, " with %lu edges: ", no_edges());
+        fprintf(stderr, " with %lu updates: ", no_edges());
         for (size_t i = 1; i < no_vertices_; ++i) {
             for (size_t j = 0; j < i; ++j) {
                 if (_contains_edge(i, j)) {

@@ -127,7 +127,7 @@ class DynamicExploreSymmetric{
         Timestamp ts;
         std::unordered_set<VertexId> ignore(*ign);
         FOREACH_EDGE_TS(v_id, dst, ts)
-            if (!algo.pfilter(embedding, dst))continue;
+            if (!algo.prefilter(embedding,dst))continue;
             bool hit = false;
             if (use_cache && step == 2) {
 
@@ -290,7 +290,12 @@ protected:
     x_barrier xsync_begin, xsync_end;
 
 public:
-
+    inline int getNoWorkers(){
+        return no_workers;
+    }
+    inline int getWid(){
+        return w_id;
+    }
     EngineDriver(int no_threads, bool symm, int wid=0, int noWorker =1){
         threads = (std::thread**) calloc(no_threads - 1, sizeof(std::thread *));
         init_barrier(&xsync_begin, no_threads);
@@ -379,10 +384,9 @@ public:
     }
 
     void execute_app(){
-        if(!do_updates){
-            A::activate_nodes();
-            printf("[STAT] Number of active items: %lu\n",no_active);
-        }
+        A::activate_nodes();
+        printf("[STAT] Number of active items: %lu\n",no_active);
+
         for (int i = 0; i < no_threads - 1; i++) {
             this->threads[i] = new std::thread(&StaticEngineDriver::compute, this, (void *) (i + 1));
         }
@@ -402,7 +406,123 @@ public:
     }
 };
 
+template<typename E, typename A, typename U>
+class DynamicEngineDriver: public EngineDriver {
 
+    E *exploreEngine;
+    A algo;
+    U *uBuf;
+    size_t items_processed =0 ;
+    void compute(void*c){
+        int tid = (long) c;
+        begin:
+
+        wait_b(&xsync_begin);
+        std::unordered_set<VertexId>ign;
+        Embedding<uint32_t> embedding;
+
+
+        while(curr_item < no_active){
+            get_work(tid, &thread_work[tid], no_active);
+            if(thread_work[tid].start == thread_work[tid].stop) goto end;
+
+            for (; thread_work[tid].start < thread_work[tid].stop; thread_work[tid].start++) {
+                VertexId  src,dst;
+                src = uBuf->updates[thread_work[tid].start].src;
+                dst = uBuf->updates[thread_work[tid].start].dst;
+
+//                if(dst > src) continue;
+                ign.clear();
+                std::unordered_set<VertexId > neighbours;
+                neighbours.clear();
+
+                    embedding.append(src);
+                    embedding.append(dst);
+                    if(!algo.prefilter(&embedding, dst) || !algo.prefilter(&embedding, src)) continue;
+                    if(!algo.filter(&embedding)){
+                        embedding.pop();
+                        embedding.pop();
+                        continue;
+                    }
+                    VertexId d;
+                    Timestamp ts;
+                if(symmetric){
+                    FOREACH_EDGE_TS(src, d ,ts);
+                        if( d != dst && ts <= embedding.max_ts() )
+                            if( ts == embedding.max_ts() && (d < src || d < dst))
+                                ign.insert(d);
+                    ENDFOR
+
+                    FOREACH_EDGE_TS(dst, d, ts)
+                        if( ts == embedding.max_ts() && d < src )
+                            ign.insert(d);
+                    ENDFOR
+                }
+                else{
+
+                    FOREACH_EDGE_TS(src, d, ts)
+                        if (d != dst && ts <= embedding.max_ts()) {
+                            if (ts == embedding.max_ts() && (d < src)) {
+                                ign.insert(d);
+                                continue;
+                            }
+                            neighbours.insert(d);
+                        }
+                    ENDFOR
+                }
+                exploreEngine->explore(&embedding, 2, tid, &neighbours, &ign);
+
+                embedding.pop();
+                embedding.pop();
+            }
+        }
+        end:
+        wait_b(&xsync_end);
+        if (tid != 0) goto begin;
+    }
+
+public:
+    DynamicEngineDriver(int no_threads, bool symm, U* uB):EngineDriver(no_threads,symm){
+        exploreEngine=  new E();
+        uBuf = uB;
+    }
+
+    void execute_app(){
+        for (int i = 0; i < no_threads - 1; i++) {
+            this->threads[i] = new std::thread(&DynamicEngineDriver::compute, this, (void *) (i + 1));
+        }
+
+        curr_item = 0;
+        uint64_t cand = 0;
+        printf("[INFO EN] Updates consumed\n");
+        wait_b(&uBuf->updates_consumed);
+        printf("[INFO EN] Updates consumed ack\n");
+        do{
+            printf("[INFO EN] Waiting for new updates\n");
+            wait_b(&uBuf->updates_ready);
+            printf("[INFO EN] Received updates\n");
+            no_active = uBuf->get_no_updates();
+
+            curr_item = 0;
+
+            compute(0);
+
+            no_active = no_active_next;
+           size_t no_triangles = 0;
+            for (int i = 0; i < no_threads; i++) {
+                no_triangles += per_thread_data[i];
+                per_thread_data[i] = 0;
+            }
+            items_processed += no_triangles;
+            printf("[INFO EN] Updates consumed 2\n");
+
+            printf("Found %lu (total %lu) \n",no_triangles, items_processed);
+            wait_b(&uBuf->updates_consumed);
+        } while(1);
+
+    }
+
+};
 //TODO Dynamic engine driver, should have barrier with Update engine to wait for updates while not signalled with stop() fr
 //from the interface
 #endif //TESSERACT_ENGINE_ONE_HPP

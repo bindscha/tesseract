@@ -82,6 +82,8 @@ extern "C" void start();
 
 extern "C" void stop();
 
+extern "C" void preloadChunk(const size_t chunk_size);
+
 extern "C" void vertex_new(const VertexId id, const Timestamp ts);
 
 extern "C" void vertex_del(const VertexId id, const Timestamp ts);
@@ -103,7 +105,7 @@ extern Algorithm algorithm;
 
 //TODO Add functions for initializing the update buffer structure
 
-
+extern "C" void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk);
 //
 // END NEW API
 //

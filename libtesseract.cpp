@@ -49,12 +49,19 @@ void init(const Configuration *configuration) {
     switch(configuration->algorithm_id){
         case 0:
         {
-            e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(no_threads,true);
+            if(do_updates){
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(no_threads,true, updateBuf);
+            }
+            else
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(no_threads,true);
             break;
         }
         case 1:
         {
-            e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
+            if(do_updates)
+                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(no_threads, false, updateBuf);
+           else
+               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
             break;
         }
         default: {
@@ -90,6 +97,29 @@ void start() {
 void stop() {
     printf("Stopped execution!\n");
 }
+void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk){
+    updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk);
+}
+
+void preloadChunk(const size_t chunk_size){
+    printf("[STAT] Preloading %lu updates\n", chunk_size);
+    std::thread** threads = (std::thread**) calloc(no_threads, sizeof(std::thread*));
+    for (int i = 0; i < no_threads - 1; i++) {
+        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, (int)no_threads);
+    }
+    updateBuf->preload_edges_before_update(edges_full, 0, edges, no_threads);
+
+    printf("[INFO] Preload done\n");
+    for(int i =0; i < no_threads-1; i++){
+        threads[i]->join();
+    }
+    for (int i = 0; i < no_threads - 1; i++) {
+        delete threads[i];
+    }
+    free(threads);
+    //TODO Compute on the preloaded chunk
+
+}
 
 void vertex_new(const VertexId id, const Timestamp ts) {
     output_random_stuff();
@@ -102,8 +132,29 @@ void vertex_del(const VertexId id, const Timestamp ts) {
 }
 
 void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
-    output_random_stuff();
-    printf("Received new edge %u->%u (ts=%u)\n", src, dst, ts);
+   // output_random_stuff();
+
+//    if(dst < src) return;
+    updateBuf->curr_ts = ts;
+    edges[adj_offsets[src] + degree[src]].src = src;
+    edges[adj_offsets[src] + degree[src]].dst = dst;
+    edges[adj_offsets[src] + degree[src]].ts = ts;
+
+    degree[src]++;
+
+//    edges[adj_offsets[dst] + degree[dst]].src = dst;
+//    edges[adj_offsets[dst] + degree[dst]].dst = src;
+//    edges[adj_offsets[dst] + degree[dst]].ts = ts;
+//    degree[dst]++;
+
+    uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
+//        if((true)){//
+    if(true){//h_src % e->getNoWorkers()  == e->getWid() ) {
+        updateBuf->updates[updateBuf->get_no_updates()].src = src;
+        updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+        updateBuf->incNoUpdates();
+    }
+    //printf("Received new edge %u->%u (ts=%u)\n", src, dst, ts);
 }
 
 void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
@@ -123,8 +174,10 @@ void edge_label_is(const VertexId src, const VertexId dst, const char *key, cons
 
 void batch_new(const GraphUpdate *buffer, size_t num_entries) {
     printf("Received new batch with %lu entries:\n", num_entries);
+    wait_b(&updateBuf->updates_consumed);
+    printf("[INFO Up] Updates consumed, processing new\n");
     for(size_t i = 0; i < num_entries; ++i) {
-        printf("  in[%lu] = ", i);
+//        printf("  in[%lu] = ", i);
         switch(buffer[i].tpe) {
             case VertexAdd:
                 vertex_new(buffer[i].src, buffer[i].ts);
@@ -148,6 +201,10 @@ void batch_new(const GraphUpdate *buffer, size_t num_entries) {
                 printf("Unknown update type %u! Ignored...\n", buffer[i].tpe);
         }
     }
+    printf("[INFO Update] Graph updated\n");
+    assert(updateBuf->get_no_updates() == num_entries);
+    wait_b(&updateBuf->updates_ready);
+    printf("[UP] Updates ready passed\n");
 }
 
 void set_output_callback(output_callback_fun_t f) {

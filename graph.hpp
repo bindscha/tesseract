@@ -78,7 +78,7 @@ extern bool do_updates;
 
 
 #define ENDFOR }
-bool has_edge_ts_sym(uint32_t src, uint32_t dst,uint32_t ts,uint32_t* ts2);
+bool has_edge_ts(uint32_t src, uint32_t dst,uint32_t ts,uint32_t* ts2);
 bool has_edge(uint32_t src, uint32_t dst,uint32_t ts,uint32_t* ts2);
  bool has_edge_sym(const uint32_t src, const uint32_t dst);
  bool has_edge(const uint32_t src, const uint32_t dst);

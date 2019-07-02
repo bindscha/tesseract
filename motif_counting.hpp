@@ -4,7 +4,6 @@
 #include<set>
 
 int per_thread_patterns[256][256];
-
 class MotifCountingE {
 public:
 uint32_t mask = 1 << 31;

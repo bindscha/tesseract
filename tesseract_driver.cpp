@@ -4,7 +4,7 @@
 
 #include "libtesseract.h"
 #include "graph.hpp"
-
+#include <thread>
 
 bool _mmap = false;
 bool indexed = false;
@@ -43,12 +43,13 @@ int main(int argc, char** argv)  {
             case 'u':
                 do_updates = 1;
                 update_file = optarg;
+
                 printf("Running updates \n");
                 break;
             case 'c':
                 tmp = std::string(optarg);
-                initial_chunk = stoul(tmp); //preload initial_chunk edges before starting to apply updates
-                printf("Preloading %lu edges\n ", initial_chunk);
+                initial_chunk = stoul(tmp); //preload initial_chunk updates before starting to apply updates
+                printf("Preloading %lu updates\n ", initial_chunk);
                 break;
             case 'k':
 //              K = atoi(optarg);
@@ -65,19 +66,34 @@ int main(int argc, char** argv)  {
 
     configuration->worker_id = 0;
     configuration->num_workers = 1;
-
+    if(do_updates)
+        init_update_buf(b_size, NB_EDGES, NB_NODES,  initial_chunk);
     //For single machine case with a file as input:
     setGraphInputFiles(graphInput);
     init(configuration);
 
+
+    std::thread engine_th(start); //start  Engine
+
     if(do_updates){
         if(initial_chunk != 0 ){
-            // Fill initial chunk
+            preloadChunk(initial_chunk);
         }
-        //Generate batch of batch_size
+        GraphUpdate* update_stream = new GraphUpdate[b_size];
+        size_t no_batches = 0;
+        for(size_t j = initial_chunk; j < NB_EDGES; j+= b_size){
+            for(size_t i = 0; i < b_size; i++) {
+                update_stream[i].src = edges_full[i].src;
+                update_stream[i].dst = edges_full[i].dst;
+                update_stream[i].ts = no_batches;
+                update_stream[i].tpe = EdgeAdd;
+            }
+            batch_new(update_stream, b_size);
+        }
         //Start update engine
     }
-    start(); //start  Engine
+    engine_th.join();
+
 
 
 
