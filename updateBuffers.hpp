@@ -109,6 +109,9 @@ public:
     inline void incNoUpdates(){
         no_up_currently++;
     }
+    inline void resetNoUpdates(){
+        no_up_currently = 0;
+    }
     void preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads){
       size_t num = initial_chunk / no_threads;
 

@@ -80,19 +80,30 @@ int main(int argc, char** argv)  {
             preloadChunk(initial_chunk);
         }
         GraphUpdate* update_stream = new GraphUpdate[b_size];
-        size_t no_batches = 0;
-        for(size_t j = initial_chunk; j < NB_EDGES; j+= b_size){
-            for(size_t i = 0; i < b_size; i++) {
-                update_stream[i].src = edges_full[i].src;
-                update_stream[i].dst = edges_full[i].dst;
-                update_stream[i].ts = no_batches;
-                update_stream[i].tpe = EdgeAdd;
+        size_t no_batches = 1;
+        for(size_t j = initial_chunk; j < NB_EDGES;){//} j+= b_size){
+            if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
+            volatile size_t items_added = 0;
+           volatile size_t i = 0;
+            for( ;items_added < b_size && j + i < NB_EDGES; i++ ) {
+                if(edges_full[j + i].src > edges_full[j + i].dst) continue;
+
+                update_stream[items_added].src = edges_full[j+ i].src;
+                update_stream[items_added].dst = edges_full[j+ i].dst;
+                update_stream[items_added].ts = no_batches;
+                update_stream[items_added].tpe = EdgeAdd;
+                items_added++;
             }
-            batch_new(update_stream, b_size);
+            j+=i;
+            printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
+            no_batches++;
+            batch_new(update_stream, items_added);
         }
         //Start update engine
     }
+    stop();
     engine_th.join();
+
 
 
 

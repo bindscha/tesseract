@@ -95,7 +95,10 @@ void start() {
 }
 
 void stop() {
-    printf("Stopped execution!\n");
+
+    printf("Stopping execution!\n");
+    e->stop();
+    if(do_updates) wait_b(&updateBuf->updates_consumed);
 }
 void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk){
     updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk);
@@ -134,7 +137,7 @@ void vertex_del(const VertexId id, const Timestamp ts) {
 void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
    // output_random_stuff();
 
-//    if(dst < src) return;
+    if(dst < src) return;
     updateBuf->curr_ts = ts;
     edges[adj_offsets[src] + degree[src]].src = src;
     edges[adj_offsets[src] + degree[src]].dst = dst;
@@ -142,14 +145,14 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
 
     degree[src]++;
 
-//    edges[adj_offsets[dst] + degree[dst]].src = dst;
-//    edges[adj_offsets[dst] + degree[dst]].dst = src;
-//    edges[adj_offsets[dst] + degree[dst]].ts = ts;
-//    degree[dst]++;
+    edges[adj_offsets[dst] + degree[dst]].src = dst;
+    edges[adj_offsets[dst] + degree[dst]].dst = src;
+    edges[adj_offsets[dst] + degree[dst]].ts = ts;
+    degree[dst]++;
 
     uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
 //        if((true)){//
-    if(true){//h_src % e->getNoWorkers()  == e->getWid() ) {
+    if(h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
         updateBuf->incNoUpdates();
@@ -175,7 +178,7 @@ void edge_label_is(const VertexId src, const VertexId dst, const char *key, cons
 void batch_new(const GraphUpdate *buffer, size_t num_entries) {
     printf("Received new batch with %lu entries:\n", num_entries);
     wait_b(&updateBuf->updates_consumed);
-    printf("[INFO Up] Updates consumed, processing new\n");
+    updateBuf->resetNoUpdates() ;
     for(size_t i = 0; i < num_entries; ++i) {
 //        printf("  in[%lu] = ", i);
         switch(buffer[i].tpe) {
@@ -201,10 +204,8 @@ void batch_new(const GraphUpdate *buffer, size_t num_entries) {
                 printf("Unknown update type %u! Ignored...\n", buffer[i].tpe);
         }
     }
-    printf("[INFO Update] Graph updated\n");
-    assert(updateBuf->get_no_updates() == num_entries);
+//    assert(updateBuf->get_no_updates() == num_entries /2);
     wait_b(&updateBuf->updates_ready);
-    printf("[UP] Updates ready passed\n");
 }
 
 void set_output_callback(output_callback_fun_t f) {

@@ -78,36 +78,23 @@ void init_adj_degree(){
     exit(1);
 
   }
-//  uint32_t to_mmap = NB_NODES* sizeof(*adj_offsets);
-//  printf("to_mmap %u\n",to_mmap);
-//  if(to_mmap %4096 !=0){
-//    printf("failed to mmap\n");
-//    to_mmap = to_mmap + 4096 - to_mmap %4096;
-//
-//  }
-
-
   adj_offsets = (size_t*) calloc(NB_NODES, sizeof(size_t));
   size_t b_read = read(fd, adj_offsets, NB_NODES * sizeof(size_t));
   assert(b_read == NB_NODES * sizeof(size_t));
-//  adj_offsets = (size_t*) mmap(NULL, to_mmap, PROT_READ , MAP_PRIVATE, fd,0);
 
-//  if(adj_offsets == MAP_FAILED)
-//    perror("Failed to mmap offsets");
-
-   for(uint32_t i = 0; i < NB_NODES - 1; i++){
-    assert(degree[i] == 0);
-    degree[i] = adj_offsets[i+1] - adj_offsets[i];
-  }
-  degree[NB_NODES - 1] = NB_EDGES - adj_offsets[NB_NODES - 1];
+if(!do_updates) {
+    for (uint32_t i = 0; i < NB_NODES - 1; i++) {
+        assert(degree[i] == 0);
+        degree[i] = adj_offsets[i + 1] - adj_offsets[i];
+    }
+    degree[NB_NODES - 1] = NB_EDGES - adj_offsets[NB_NODES - 1];
 
   uint64_t n_edges = 0;
   for(uint32_t i = 0; i <NB_NODES;i++){
-//    for(uint32_t idx = 0; idx < degree[i];idx++){
       n_edges += degree[i];
-//    }
   }
   assert(n_edges == NB_EDGES);
+}
 }
 
 

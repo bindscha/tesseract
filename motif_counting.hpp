@@ -100,18 +100,21 @@ inline void process(const Embedding<uint32_t> *emb, const uint32_t step,const in
 
     inline void output()const{
       int unique = 0;
+        printf("[STAT] Patterns: ");
       for(int i = 0; i <256; i++){
         for(int j = 0; j <56;j++) {
 
           unique_patterns[i]+= per_thread_patterns[j][i];
 
         }
+
         if (unique_patterns[i] != 0) {
           unique++;
-          printf("u[%d]=%lu  ", i, unique_patterns[i]);
+          printf("[%d]=%lu  ", i, unique_patterns[i]);
+          unique_patterns[i] =0;
         }
       }
-      printf("\nFOund %d unique patterns\n", unique);
+      printf("\n[STAT] Found %d unique patterns\n", unique);
     }
 };
 #endif

@@ -9,7 +9,7 @@
 #include "algo_api.hpp"
 #include "embedding.hpp"
 #include "graph.hpp"
-
+#include "embeddings_cache.hpp"
 #include "graph_cache.hpp"
 #include "canonic_checks.hpp"
 //#include "triangle_c.hpp"
@@ -121,7 +121,11 @@ public:
 template<typename T, typename A>
 class DynamicExploreSymmetric{
     A algo;
-    bool use_cache = false;
+    bool e_cache_enabled = true;
+
+    EmbeddingsCache<VertexId> *e_cache;
+    std::vector<Embedding<VertexId>> *per_thread_e_cache_buffer;
+
     void exploreSym(Embedding<VertexId> *embedding, int step, const int tid, const std::unordered_set<VertexId>* ign){
         VertexId dst, v_id = embedding->last();
         Timestamp ts;
@@ -129,19 +133,36 @@ class DynamicExploreSymmetric{
         FOREACH_EDGE_TS(v_id, dst, ts)
             if (!algo.prefilter(embedding,dst))continue;
             bool hit = false;
-            if (use_cache && step == 2) {
-
+            if(e_cache_enabled && step == 2) {
+                item_t *entries = e_cache->get_item_at_line(embedding->first(), dst);
+                if(entries != NULL) {
+                    hit = true;
+                    item_t *item1, *tmp1;
+                    HASH_ITER(hh, entries->sub, item1, tmp1) {
+                        Embedding<uint32_t> *cached_embedding = &(item1->val);
+                        cached_embedding->append(v_id);
+                        const bool filter = embedding->no_edges() == ((step +2 ) + step)/2;//   .filter(cached_embedding);//, step + 1); //TODO this will probably need to be fixed
+                        if (filter) {
+                            per_thread_data[tid]++;
+                        }
+                        cached_embedding->pop();
+                    }
+                }
             }
-            if (hit) continue;
+
+            if(hit) continue;
+
 
             if (ts > embedding->max_ts() || embedding->contains(dst))continue;
             if (ignore.find(dst) != ignore.end()) continue;
+
             if (ts == embedding->max_ts() && dst < embedding->first()) {
                 ignore.insert(dst);
                 continue;
             }
 
             if (step < 3 && !canonic_check_r2_middle<VertexId>(dst, embedding, step)) continue;
+
             if (step >= 3 && dst < v_id) continue;
             if (step >= 3 && ts == embedding->max_ts()) {
                 uint64_t e1 = dst > v_id ? v_id : dst;// (uint64_t)dst << 32;
@@ -158,25 +179,69 @@ class DynamicExploreSymmetric{
             if(filter) {
                 if(step < K - 1) {
                     exploreSym(embedding, step + 1, tid, &ignore);
-//                    if(use_cache)
-                    // TODO add to cache
+                    if (e_cache_enabled) {
+                        per_thread_e_cache_buffer[tid].push_back(*embedding);
+                    }
+//
                 } else per_thread_data[tid]++;
             }
             embedding->pop();
         ENDFOR
     }
+    void sort3(uint32_t& a, uint32_t& b, uint32_t& c)
+    {
+        if (a > b)
+        {
+            std::swap(a, b);
+        }
+        if (b > c)
+        {
+            std::swap(b, c);
+        }
+        if (a > b)
+        {
+            std::swap(a, b);
+        }
+    }
 public:
-    DynamicExploreSymmetric()  {}
-
+    DynamicExploreSymmetric()  {
+        e_cache_enabled = true;
+        if(e_cache_enabled) {
+            e_cache = new EmbeddingsCache<uint32_t>(NB_NODES, DEFAULT_CACHE_SIZE);
+            per_thread_e_cache_buffer = new std::vector<Embedding<uint32_t>>[no_threads];
+            for(size_t i = 0; i < no_threads; ++i) {
+                per_thread_e_cache_buffer[i].reserve(100000);
+            }
+        }
+    }
+    ~DynamicExploreSymmetric(){
+        if (e_cache != NULL) {
+            delete e_cache;
+        }
+    }
     inline void toggle_cache() {
-        use_cache = !use_cache;
-        printf("Cache is: %d\n", use_cache);
+        e_cache_enabled = !e_cache_enabled;
+        printf("Cache is: %d\n", e_cache_enabled);
     }
 
     void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL, const std::unordered_set<VertexId>* ign=NULL){
         exploreSym(embedding,step,tid, ign);
         }
-
+        inline void updateCaches(){
+            if(e_cache_enabled) {
+                for (size_t i = 0; i < no_threads; ++i) {
+                    //fprintf(stderr, "Updating cache for thread %lu with %lu items...", i, per_thread_e_cache_buffer[i].size());
+                    for (size_t j = 0; j < per_thread_e_cache_buffer[i].size(); ++j) {
+                        uint32_t first = per_thread_e_cache_buffer[i][j][0], second = per_thread_e_cache_buffer[i][j][1], third = per_thread_e_cache_buffer[i][j][2];
+                        sort3(first, second, third);
+                        e_cache->insert(first, second, third, &per_thread_e_cache_buffer[i][j]);
+                    }
+                    per_thread_e_cache_buffer[i].clear();
+                    //fprintf(stderr, " done!\n");
+                }
+                //fprintf(stderr, "Cache contains %lu entries!\n", e_cache->num_entries());
+            }
+    }
 };
 template<typename T, typename A>
 class DynamicExploreNonSym {
@@ -184,7 +249,7 @@ class DynamicExploreNonSym {
     A algo;
 public:
     DynamicExploreNonSym()  {}
-
+    inline void updateCaches(){}
     void explore(Embedding<VertexId>* embedding, int step, const int tid,const  std::unordered_set<VertexId>* neigh=NULL, const std::unordered_set<VertexId>* ign=NULL){
         std::unordered_set<VertexId> neighbours(*neigh);
         std::unordered_set<uint32_t> ignore(*ign);
@@ -224,7 +289,7 @@ public:
             const bool filter = algo.filter(embedding);
             if(filter ){
                 if(step < K -1 )
-                    explore(embedding, step + 1 , tid, &neighbours);
+                    explore(embedding, step + 1 , tid, &neighbours, &ignore);
                 else{
                     std::array<uint32_t,K> deg;
                     std::array<uint32_t,K> deg2;
@@ -290,6 +355,9 @@ protected:
     x_barrier xsync_begin, xsync_end;
 
 public:
+    virtual void stop(){
+
+    }
     inline int getNoWorkers(){
         return no_workers;
     }
@@ -380,6 +448,9 @@ public:
     StaticEngineDriver(int no_threads, bool symm):EngineDriver(no_threads,symm){
         exploreEngine=  new E();
     }
+    void stop(){
+
+    }
     ~StaticEngineDriver(){
     }
 
@@ -408,7 +479,7 @@ public:
 
 template<typename E, typename A, typename U>
 class DynamicEngineDriver: public EngineDriver {
-
+    bool do_run = true;
     E *exploreEngine;
     A algo;
     U *uBuf;
@@ -432,30 +503,34 @@ class DynamicEngineDriver: public EngineDriver {
                 dst = uBuf->updates[thread_work[tid].start].dst;
 
 //                if(dst > src) continue;
+
+                if(!algo.prefilter(&embedding, dst) || !algo.prefilter(&embedding, src)) continue;
+
+                embedding.append(src);
+                embedding.append(dst);
+
+
+//                if(!algo.filter(&embedding)){
+//                    embedding.pop();
+//                    embedding.pop();
+//                    continue;
+//                }
                 ign.clear();
                 std::unordered_set<VertexId > neighbours;
                 neighbours.clear();
 
-                    embedding.append(src);
-                    embedding.append(dst);
-                    if(!algo.prefilter(&embedding, dst) || !algo.prefilter(&embedding, src)) continue;
-                    if(!algo.filter(&embedding)){
-                        embedding.pop();
-                        embedding.pop();
-                        continue;
-                    }
+
                     VertexId d;
                     Timestamp ts;
                 if(symmetric){
-                    FOREACH_EDGE_TS(src, d ,ts);
-                        if( d != dst && ts <= embedding.max_ts() )
-                            if( ts == embedding.max_ts() && (d < src || d < dst))
-                                ign.insert(d);
+                    FOREACH_EDGE_TS(src, d,ts)
+                        if(d != dst && ts <= embedding.max_ts()) {
+                            if (ts == embedding.max_ts() && (d < src || d < dst)) {  ign.insert(d);}
+                        }
                     ENDFOR
-
                     FOREACH_EDGE_TS(dst, d, ts)
-                        if( ts == embedding.max_ts() && d < src )
-                            ign.insert(d);
+                        //            if(d == src) continue;
+                        if (ts == embedding.max_ts() &&  d < src ) {ign.insert(d);}
                     ENDFOR
                 }
                 else{
@@ -486,27 +561,31 @@ public:
         exploreEngine=  new E();
         uBuf = uB;
     }
-
+    ~DynamicEngineDriver(){
+    }
+    inline void stop(){
+        do_run = false;
+    }
     void execute_app(){
         for (int i = 0; i < no_threads - 1; i++) {
             this->threads[i] = new std::thread(&DynamicEngineDriver::compute, this, (void *) (i + 1));
         }
-
+        printf("[INFO] Running in symmetric mode %d \n", symmetric);
         curr_item = 0;
         uint64_t cand = 0;
-        printf("[INFO EN] Updates consumed\n");
         wait_b(&uBuf->updates_consumed);
-        printf("[INFO EN] Updates consumed ack\n");
-        do{
-            printf("[INFO EN] Waiting for new updates\n");
+        double total_time = 0;
+        while(do_run){
             wait_b(&uBuf->updates_ready);
-            printf("[INFO EN] Received updates\n");
             no_active = uBuf->get_no_updates();
 
             curr_item = 0;
-
+            auto start = std::chrono::high_resolution_clock::now();
             compute(0);
-
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> diff = end - start;
+            std::cout << "[TIME] Batch process time: " << diff.count() << " seconds\n";
+            total_time += diff.count();
             no_active = no_active_next;
            size_t no_triangles = 0;
             for (int i = 0; i < no_threads; i++) {
@@ -514,15 +593,17 @@ public:
                 per_thread_data[i] = 0;
             }
             items_processed += no_triangles;
-            printf("[INFO EN] Updates consumed 2\n");
-
-            printf("Found %lu (total %lu) \n",no_triangles, items_processed);
+            algo.output();
+            exploreEngine->updateCaches();
+            printf("[STAT] Found %lu (total %lu) \n",no_triangles, items_processed);
             wait_b(&uBuf->updates_consumed);
-        } while(1);
+        }
+        printf("[TIME] Total Algo time %.3f\n", total_time);
 
     }
 
+
 };
-//TODO Dynamic engine driver, should have barrier with Update engine to wait for updates while not signalled with stop() fr
+
 //from the interface
 #endif //TESSERACT_ENGINE_ONE_HPP
