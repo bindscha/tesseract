@@ -9,6 +9,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FILE_OFFSET_BITS=64  -D_FILE_OFFSET_B
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11")
 include_directories("${PROJECT_SOURCE_DIR}")
 #add_executable(tesseract graph.cpp engine_one.hpp libtesseract.h tesseract.hpp tesseract.cpp)
-add_executable(libtesseract  libtesseract.h embedding.hpp engine_one.hpp graph.cpp libtesseract.cpp tesseract_driver.cpp )
+add_executable(libtesseract  libtesseract.h embedding.hpp engine_one.hpp graph.cpp libtesseract.cpp tesseract_driver.cpp scala_algos.h)
 #target_link_libraries(tesseract)
 target_link_libraries(libtesseract)

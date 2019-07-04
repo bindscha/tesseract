@@ -187,7 +187,9 @@ public:
         // Laurent: following Jasmina's definition of ==
         return no_edges() == other.no_edges();
     }
-
+    Edges getEdges() const{
+        return edges_;
+    }
     void operator=(Embedding other) {
         memcpy(vertices_, other.vertices_, MAX_SIZE * sizeof(V));
         edges_ = other.edges_;

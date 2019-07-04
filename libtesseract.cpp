@@ -47,8 +47,22 @@ void output_random_stuff() {
 void init(const Configuration *configuration) {
     printf("Initialized Tesseract worker %lu (out of %lu) for algorithm %lu\n", configuration->worker_id, configuration->num_workers, configuration->algorithm_id);
     switch(configuration->algorithm_id){
+        case 100:{
+            printf("[INFO] Running external algo\n");
+            if(do_updates){
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(no_threads,ScalaAlgo::getSymmetric(), updateBuf);
+                ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+            }
+            else {
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(no_threads,
+                                                                                                   ScalaAlgo::getSymmetric());
+                ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+            }
+            break;
+        }
         case 0:
         {
+            printf("[INFO] Running %d-Cliques with %d threads\n",K, no_threads);
             if(do_updates){
                 e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(no_threads,true, updateBuf);
             }
@@ -58,6 +72,7 @@ void init(const Configuration *configuration) {
         }
         case 1:
         {
+            printf("[INFO] Running %d-MC with %d threads\n",K, no_threads);
             if(do_updates)
                 e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(no_threads, false, updateBuf);
            else
@@ -66,6 +81,7 @@ void init(const Configuration *configuration) {
         }
         case 2:
         {
+            printf("[INFO] Running %d-LCliques with %d threads\n",K, no_threads);
             if(do_updates){
                 e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(no_threads,true, updateBuf);
             }
@@ -87,8 +103,14 @@ void setGraphInputFiles(const GraphInputFiles* graphInput){
 
     init_graph_input(false); //this means that the graph is loaded in memory and offsets are not mmaped
 }
-void set_algorithm(const Algorithm *algorithm) {
-
+void set_algorithm(const Algorithm *_algorithm) {
+    algorithm.pupdate = _algorithm->pupdate;
+    algorithm.pfilter = _algorithm->pfilter;
+    algorithm.filter = _algorithm->filter;
+    algorithm.match = _algorithm->match;
+    algorithm.output = _algorithm->output;
+    algorithm.init = _algorithm->init;
+    ScalaAlgo::setSymmetric(true);
 }
 
 void start() {

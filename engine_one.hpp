@@ -14,7 +14,7 @@
 #include "canonic_checks.hpp"
 //#include "triangle_c.hpp"
 #include "cliques_ooc.hpp"
-
+#include "scala_algos.h"
 #include "motif_counting.hpp"
 #include "color_cliques.hpp"
 //#include "updateBuffers.hpp"
@@ -248,6 +248,7 @@ class DynamicExploreNonSym {
     static const size_t NB_BITS = 100000;
     A algo;
 public:
+
     DynamicExploreNonSym()  {}
     inline void updateCaches(){}
     void explore(Embedding<VertexId>* embedding, int step, const int tid,const  std::unordered_set<VertexId>* neigh=NULL, const std::unordered_set<VertexId>* ign=NULL){
@@ -358,6 +359,7 @@ public:
     virtual void stop(){
 
     }
+
     inline int getNoWorkers(){
         return no_workers;
     }
@@ -451,6 +453,9 @@ class StaticEngineDriver: public EngineDriver{
 public:
     StaticEngineDriver(int no_threads, bool symm):EngineDriver(no_threads,symm){
         exploreEngine=  new E();
+    }
+    A* getAlgo(){
+        return &algo;
     }
     void stop(){
 
@@ -567,6 +572,9 @@ public:
         uBuf = uB;
     }
     ~DynamicEngineDriver(){
+    }
+    A* getAlgo(){
+        return &algo;
     }
     inline void stop(){
         do_run = false;
