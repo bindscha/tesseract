@@ -38,7 +38,7 @@ inline void process_update_tid(const Embedding<uint32_t>* embedding,const uint32
 inline bool expand(const uint32_t step)  {
   return step < K - 1;
 }
- static void activate_nodes(){
+  void activate_nodes(){
   for (uint32_t i = 0; i < NB_NODES; i++) {
     if (degree[i] >=K - 1)//should_be_active(i))
       for (size_t idx = 0; idx < degree[i]; idx++) {

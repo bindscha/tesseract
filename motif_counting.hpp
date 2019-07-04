@@ -86,7 +86,7 @@ inline void process(const Embedding<uint32_t> *emb, const uint32_t step,const in
       inline bool prefilter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
         return true;
     }
-    static void activate_nodes() {
+     void activate_nodes() {
       no_active = 0;
       for(uint32_t i = 0; i < NB_NODES; i++){
         for(size_t idx = 0; idx < degree[i]; idx++) {

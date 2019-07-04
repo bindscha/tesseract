@@ -64,6 +64,15 @@ void init(const Configuration *configuration) {
                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
             break;
         }
+        case 2:
+        {
+            if(do_updates){
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(no_threads,true, updateBuf);
+            }
+            else
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(no_threads,true);
+            break;
+        }
         default: {
             printf("You need to have a valie algo id! \n");
             exit(1);

@@ -121,7 +121,7 @@ public:
 template<typename T, typename A>
 class DynamicExploreSymmetric{
     A algo;
-    bool e_cache_enabled = true;
+    bool e_cache_enabled = false;
 
     EmbeddingsCache<VertexId> *e_cache;
     std::vector<Embedding<VertexId>> *per_thread_e_cache_buffer;
@@ -410,8 +410,12 @@ class StaticEngineDriver: public EngineDriver{
 
                 src = edges[active[thread_work[tid].start]].src;
                 dst = edges[active[thread_work[tid].start]].dst;
-                if(!algo.prefilter(&embedding,src) || !algo.prefilter(&embedding,dst)) continue;
                 if (dst < src) continue;
+                if(!algo.prefilter(&embedding,src)) continue;
+                embedding.append(src);
+                if( !algo.prefilter(&embedding,dst)) {embedding.pop();
+                    continue;}
+
 
                 std::unordered_set <VertexId> neighbours; //I tried to make this a f() but too much overhead
                 if(!symmetric) {
@@ -423,7 +427,7 @@ class StaticEngineDriver: public EngineDriver{
                     ENDFOR
                 }
 
-                embedding.append(src);
+
                 embedding.append(dst);
 
                 exploreEngine->explore(&embedding, 2, tid, &neighbours,NULL);
@@ -455,7 +459,7 @@ public:
     }
 
     void execute_app(){
-        A::activate_nodes();
+        algo.activate_nodes();
         printf("[STAT] Number of active items: %lu\n",no_active);
 
         for (int i = 0; i < no_threads - 1; i++) {
@@ -503,10 +507,11 @@ class DynamicEngineDriver: public EngineDriver {
                 dst = uBuf->updates[thread_work[tid].start].dst;
 
 //                if(dst > src) continue;
-
-                if(!algo.prefilter(&embedding, dst) || !algo.prefilter(&embedding, src)) continue;
-
+                if(!algo.prefilter(&embedding,src)) continue;
                 embedding.append(src);
+                if(!algo.prefilter(&embedding, dst)){ embedding.pop(); continue;}// || !algo.prefilter(&embedding, src)) continue;
+
+//                embedding.append(src);
                 embedding.append(dst);
 
 

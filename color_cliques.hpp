@@ -10,13 +10,13 @@ inline bool is_in_set(Embedding<uint32_t> embedding, uint32_t v_id, uint32_t ste
   return false;
 }
 
-inline bool filter( const uint32_t cand, const Embedding<uint32_t>* embedding,const uint32_t step)const  {
+inline bool filter( const Embedding<VertexId>* embedding){ //const uint32_t cand, const Embedding<uint32_t>* embedding,const uint32_t step)const  {
 
   for(int i = 0; i < embedding->no_vertices() -1;i++){
-      if( (*embedding)[i] % K == cand % K) return false;
+      if( (*embedding)[i] % K == embedding->last() % K) return false;
       }
 
-  return embedding->no_edges()  == ((step +1)* (step))/2 ;
+  return embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
 
 }
 
@@ -54,7 +54,7 @@ inline bool expand(const uint32_t step) const {
     inline void output(){
       
     }
-void activate_nodes(){
+ void activate_nodes(){
   for (uint32_t i = 0; i < NB_NODES; i++) {
     if (prefilter(i))//should_be_active(i))
       for (size_t idx = 0; idx < degree[i]; idx++) {
