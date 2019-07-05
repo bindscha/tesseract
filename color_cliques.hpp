@@ -2,6 +2,7 @@
 #define __COLOR_CLIQUE_HPP__
 
 class ColorCliqueE{
+    size_t no_cliques = 0;
 public:
 inline bool is_in_set(Embedding<uint32_t> embedding, uint32_t v_id, uint32_t step){
 
@@ -47,14 +48,15 @@ inline bool prefilter(const uint32_t cand ) const {
 
   return degree[cand] >=K - 1;
 }
-inline bool expand(const uint32_t step) const {
-  return step < K - 1;
-}
-
-    inline void output(){
-      
+    inline void setItemsFound(size_t items){
+        no_cliques = items;
     }
- void activate_nodes(){
+void output(){
+        printf("Done counting cliques. Found %lu %d-cliques\n", no_cliques, K);
+
+}
+ void init(){
+    if(!do_updates)
   for (uint32_t i = 0; i < NB_NODES; i++) {
     if (prefilter(i))//should_be_active(i))
       for (size_t idx = 0; idx < degree[i]; idx++) {

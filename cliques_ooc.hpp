@@ -4,7 +4,10 @@
 
 //Clique finding filter functions
 class CliqueFindE {//}; public  Algorithm<Embedding<uint32_t>> {
+    size_t no_cliques = 0;
+    size_t total = 0;
 public:
+
     inline  bool prefilter(const Embedding<VertexId >* embedding,const VertexId cand )  {
         return degree[cand] >=K - 1;
     }
@@ -21,7 +24,10 @@ inline bool is_in_set(Embedding<uint32_t> embedding, uint32_t v_id, uint32_t ste
 }
 
 
-
+inline void setItemsFound(size_t items){
+        no_cliques = items;
+        total += no_cliques;
+    }
 inline void process(Embedding<uint32_t>* embedding, uint32_t step) {
 
 }
@@ -38,7 +44,8 @@ inline void process_update_tid(const Embedding<uint32_t>* embedding,const uint32
 inline bool expand(const uint32_t step)  {
   return step < K - 1;
 }
-  void activate_nodes(){
+  void init(){
+  if(!do_updates)
   for (uint32_t i = 0; i < NB_NODES; i++) {
     if (degree[i] >=K - 1)//should_be_active(i))
       for (size_t idx = 0; idx < degree[i]; idx++) {
@@ -49,7 +56,8 @@ inline bool expand(const uint32_t step)  {
   }
 }
     void output(){
-      printf("Done counting cliques\n");
+      printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, K, total);
+
     }
 };
 

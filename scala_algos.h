@@ -11,6 +11,7 @@
 class ScalaAlgo {//}; public  Algorithm<Embedding<uint32_t>> {
     Algorithm algo;
     static bool symmetric;
+    size_t no_items = 0;
     inline EmbeddingTmp* cpyEmb(const Embedding<VertexId>* embedding){
         EmbeddingTmp* e ;
         e->edges_mat = embedding->getEdges();
@@ -49,9 +50,6 @@ public:
 
 
     }
-
-
-
     inline void process(Embedding<uint32_t>* embedding, uint32_t step) {
 
     }
@@ -62,10 +60,15 @@ public:
     inline void match(Embedding<VertexId>* embedding){
         algo.match(cpyEmb(embedding));
     }
-    void activate_nodes(){
+    void init(){
 
     }
+    inline void setItemsFound(size_t items){
+        no_items = items;
+    }
     void output(){
+        printf("Found %lu items\n", no_items);
+//        algo.output();
 //        algo.output();
 //TODO
     }

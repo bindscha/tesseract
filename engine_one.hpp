@@ -464,14 +464,14 @@ public:
     }
 
     void execute_app(){
-        algo.activate_nodes();
+        algo.init();
         printf("[STAT] Number of active items: %lu\n",no_active);
 
         for (int i = 0; i < no_threads - 1; i++) {
             this->threads[i] = new std::thread(&StaticEngineDriver::compute, this, (void *) (i + 1));
         }
 
-        curr_item = 0;
+        curr_item  = 0;
         uint64_t cand = 0;
         compute(0);
         curr_item = 0;
@@ -481,7 +481,8 @@ public:
             no_triangles += per_thread_data[i];
             per_thread_data[i] = 0;
         }
-        printf("[INFO Driver] Found %lu\n",no_triangles);
+        algo.setItemsFound(no_triangles);
+//        printf("[INFO Driver] Found %lu\n",no_triangles);
         algo.output();
     }
 };
@@ -606,9 +607,11 @@ public:
                 per_thread_data[i] = 0;
             }
             items_processed += no_triangles;
+
+            algo.setItemsFound(no_triangles);
             algo.output();
             exploreEngine->updateCaches();
-            printf("[STAT] Found %lu (total %lu) \n",no_triangles, items_processed);
+//            printf("[STAT] Found %lu (total %lu) \n",no_triangles, items_processed);
             wait_b(&uBuf->updates_consumed);
         }
         printf("[TIME] Total Algo time %.3f\n", total_time);

@@ -86,8 +86,9 @@ inline void process(const Embedding<uint32_t> *emb, const uint32_t step,const in
       inline bool prefilter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
         return true;
     }
-     void activate_nodes() {
+     void init() {
       no_active = 0;
+      if(!do_updates)
       for(uint32_t i = 0; i < NB_NODES; i++){
         for(size_t idx = 0; idx < degree[i]; idx++) {
           if(edges_full[adj_offsets[i] + idx].dst > i) {
@@ -97,7 +98,9 @@ inline void process(const Embedding<uint32_t> *emb, const uint32_t step,const in
         }
       }
     }
+    inline void setItemsFound(size_t items)const{
 
+    }
     inline void output()const{
       int unique = 0;
         printf("[STAT] Patterns: ");

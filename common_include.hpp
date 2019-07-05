@@ -31,6 +31,6 @@
 #include <forward_list>
 #include <iostream>
 
-#define K 4
+#define K 3
 //extern int K;
 #endif
