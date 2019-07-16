@@ -61,11 +61,11 @@ public:
     size_t initial_chunk = 0;
     int no_threads = 1;
 
-    bool shuffle = false;//false;
+    bool shuffle = true;//false;
     std::vector<uint64_t> v;
     void shuffle_edge_idx(size_t _NB_EDGES){
 //      v.reserve(_NB_EDGES - initial_chunk);
-     //   std::iota(std::begin(v), std::end(v), 0);
+        std::iota(std::begin(v), std::end(v), 0);
         std::random_device rd;
         std::mt19937_64 g(rd());
 
@@ -93,7 +93,7 @@ public:
       // one for accumulating updates while updates from other are processed
       uint64_t i = 0;
       uint64_t equals = 0;
-//      if(shuffle)
+      if(shuffle)
         shuffle_edge_idx(_NB_EDGES);
 
 //      for(size_t i  = 0; i <no_edges;i++){
@@ -114,7 +114,7 @@ public:
     }
     void preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads){
       size_t num = initial_chunk / no_threads;
-
+        printf("[STAT UP] Preloading %lu edges \n", initial_chunk);
       size_t start = tid *num;
       size_t stop = start + num;
       if(tid == no_threads - 1) stop = initial_chunk;
@@ -122,9 +122,9 @@ public:
 //      size_t u_idx = __sync_fetch_and_add(&curr_batch_start,1);
       for(;start < stop; start++){
 //        if(e[v[start]].src > e[v[start]].dst) continue;
-        if(e[start].src > e[start].dst) continue;
 //        uint32_t src = e[v[start]].src;
 //        uint32_t dst = e[v[start]].dst;
+        if(e[start].src > e[start].dst) continue;
         uint32_t src = e[start].src;
         uint32_t dst = e[start].dst;
         size_t deg = __sync_fetch_and_add(&degree[src],1);

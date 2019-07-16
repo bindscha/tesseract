@@ -14,7 +14,6 @@ size_t b_size = 0,initial_chunk = 0;
 int main(int argc, char** argv)  {
     Configuration* configuration = new Configuration();
     GraphInputFiles* graphInput = new GraphInputFiles();
-    int no_threads;
     while ((c = getopt(argc, argv, "f:d:vein:t:b:u:k:c:a:w:W:m")) != -1) {
         switch (c) {
             case 'f':
@@ -70,14 +69,19 @@ int main(int argc, char** argv)  {
         init_update_buf(b_size, NB_EDGES, NB_NODES,  initial_chunk);
     //For single machine case with a file as input:
     setGraphInputFiles(graphInput);
-    init(configuration);
+    if(initial_chunk == 0)
+     init(configuration);
 
-
-    std::thread engine_th(start); //start  Engine
+    std::thread engine_th;
+    if(initial_chunk ==0)
+       engine_th = std::thread(start); //start  Engine
 
     if(do_updates){
         if(initial_chunk != 0 ){
-            preloadChunk(initial_chunk);
+            preloadChunk(initial_chunk,configuration);
+            init(configuration);
+            engine_th = std::thread(start);
+            printf("Done preloading\n");
         }
         GraphUpdate* update_stream = new GraphUpdate[b_size];
         size_t no_batches = 1;

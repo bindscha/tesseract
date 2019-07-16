@@ -39,7 +39,7 @@ public:
     static inline bool getSymmetric(){
         return ScalaAlgo::symmetric;
     }
-    inline  bool prefilter(const Embedding<VertexId >* embedding,const VertexId cand )  {
+    inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand )  {
 
         return algo.pfilter(cpyEmb(embedding), cand);
 
@@ -57,8 +57,8 @@ public:
     void update(){
         algo.pupdate();
     }
-    inline void match(Embedding<VertexId>* embedding){
-        algo.match(cpyEmb(embedding));
+    inline bool match(Embedding<VertexId>* embedding){
+        return algo.match(cpyEmb(embedding));
     }
     void init(){
 
@@ -66,7 +66,14 @@ public:
     inline void setItemsFound(size_t items){
         no_items = items;
     }
-    void output(){
+
+    void output(Embedding<VertexId>* embPre, Embedding<VertexId>* embPost){
+        algo.output(cpyEmb(embPre), cpyEmb(embPost));
+    }
+    void output(Embedding<VertexId>* embPre){
+
+    }
+    void output_final(){
         printf("Found %lu items\n", no_items);
 //        algo.output();
 //        algo.output();
@@ -76,3 +83,4 @@ public:
 bool ScalaAlgo::symmetric = false;
 
 #endif //TESSERACT_SCALA_ALGOS_H
+

@@ -5,6 +5,7 @@
 #include "updateBuffers.hpp"
 EngineDriver* e;
 UpdateBuffer* updateBuf;
+GraphUpdateType updateType;
 //
 // Globals
 //
@@ -50,11 +51,11 @@ void init(const Configuration *configuration) {
         case 100:{
             printf("[INFO] Running external algo\n");
             if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(no_threads,ScalaAlgo::getSymmetric(), updateBuf);
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,ScalaAlgo::getSymmetric(), updateBuf);
                 ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
             }
             else {
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(no_threads,
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
                                                                                                    ScalaAlgo::getSymmetric());
                 ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
             }
@@ -62,31 +63,39 @@ void init(const Configuration *configuration) {
         }
         case 0:
         {
-            printf("[INFO] Running %d-Cliques with %d threads\n",K, no_threads);
+            printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
             if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(no_threads,true, updateBuf);
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
             }
             else
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(no_threads,true);
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
             break;
         }
         case 1:
         {
-            printf("[INFO] Running %d-MC with %d threads\n",K, no_threads);
-            if(do_updates)
-                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(no_threads, false, updateBuf);
+            printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
+            if(do_updates) {
+                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
+                do_updates = false;
+                e_tmp->execute_app();
+                do_updates = true;
+                printf("Done executing static part\n");
+//                delete(e_tmp);
+                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
+                        configuration->no_threads, false, updateBuf);
+            }
            else
-               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(no_threads,false);
+               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
             break;
         }
         case 2:
         {
-            printf("[INFO] Running %d-LCliques with %d threads\n",K, no_threads);
+            printf("[INFO] Running %d-LCliques with %d threads\n",K, configuration->no_threads);
             if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(no_threads,true, updateBuf);
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
             }
             else
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(no_threads,true);
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
             break;
         }
         default: {
@@ -135,22 +144,23 @@ void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t ini
     updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk);
 }
 
-void preloadChunk(const size_t chunk_size){
+void preloadChunk(const size_t chunk_size, Configuration* configuration){
     printf("[STAT] Preloading %lu updates\n", chunk_size);
-    std::thread** threads = (std::thread**) calloc(no_threads, sizeof(std::thread*));
-    for (int i = 0; i < no_threads - 1; i++) {
-        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, (int)no_threads);
+    std::thread** threads = (std::thread**) calloc(configuration->no_threads, sizeof(std::thread*));
+    for (int i = 0; i < configuration->no_threads - 1; i++) {
+        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, (int)configuration->no_threads);
     }
-    updateBuf->preload_edges_before_update(edges_full, 0, edges, no_threads);
+    updateBuf->preload_edges_before_update(edges_full, 0, edges, configuration->no_threads);
 
     printf("[INFO] Preload done\n");
-    for(int i =0; i < no_threads-1; i++){
+    for(int i =0; i < configuration->no_threads-1; i++){
         threads[i]->join();
     }
-    for (int i = 0; i < no_threads - 1; i++) {
+    for (int i = 0; i < configuration->no_threads - 1; i++) {
         delete threads[i];
     }
     free(threads);
+
     //TODO Compute on the preloaded chunk
 
 }
@@ -211,6 +221,7 @@ void batch_new(const GraphUpdate *buffer, size_t num_entries) {
     wait_b(&updateBuf->updates_consumed);
     updateBuf->resetNoUpdates() ;
     for(size_t i = 0; i < num_entries; ++i) {
+        updateType = buffer[i].tpe;
 //        printf("  in[%lu] = ", i);
         switch(buffer[i].tpe) {
             case VertexAdd:

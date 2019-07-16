@@ -58,7 +58,7 @@ typedef void (*init_fun_ptr_t)();
 typedef bool (*pfilter_fun_ptr_t)(const EmbeddingTmp *embedding, const VertexId vertexId);
 typedef void (*pupdate_fun_ptr_t)();
 typedef bool (*filter_fun_ptr_t)(const EmbeddingTmp *embedding);
-typedef void (*match_fun_ptr_t)(const EmbeddingTmp *embedding);
+typedef bool (*match_fun_ptr_t)(const EmbeddingTmp *embedding);
 typedef void (*output_fun_ptr_t)(const EmbeddingTmp *pre_embedding, const EmbeddingTmp *post_embedding);
 
 typedef struct {
@@ -82,7 +82,7 @@ extern "C" void start();
 
 extern "C" void stop();
 
-extern "C" void preloadChunk(const size_t chunk_size);
+extern "C" void preloadChunk(const size_t chunk_size, Configuration* configuration);
 
 extern "C" void vertex_new(const VertexId id, const Timestamp ts);
 
@@ -102,7 +102,7 @@ extern "C" void set_output_callback(output_callback_fun_t f);
 
 extern "C" void unset_output_callback();
 extern Algorithm algorithm;
-
+extern GraphUpdateType updateType;
 //TODO Add functions for initializing the update buffer structure
 
 extern "C" void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk);
