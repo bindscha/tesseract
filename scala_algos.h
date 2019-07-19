@@ -12,8 +12,9 @@ class ScalaAlgo {//}; public  Algorithm<Embedding<uint32_t>> {
     Algorithm algo;
     static bool symmetric;
     size_t no_items = 0;
-    inline EmbeddingTmp* cpyEmb(const Embedding<VertexId>* embedding){
-        EmbeddingTmp* e ;
+    EmbeddingTmp* e ;
+    inline void cpyEmb(const Embedding<VertexId>* embedding, EmbeddingTmp* e){
+
         e->edges_mat = embedding->getEdges();
         e->num_vertices = embedding->no_vertices();
         for(int i = 0; i < embedding->no_vertices(); i++){
@@ -21,7 +22,7 @@ class ScalaAlgo {//}; public  Algorithm<Embedding<uint32_t>> {
         }
         e->ts_mat = embedding->max_ts();
         e->ts = embedding->max_ts();
-        return e;
+
     }
 
 public:
@@ -32,33 +33,30 @@ public:
         algorithm.match = _algorithm->match;
         algorithm.output = _algorithm->output;
         algorithm.init = _algorithm->init;
-    }
-   static inline void setSymmetric(bool sym){
-        symmetric = sym;
-    }
-    static inline bool getSymmetric(){
-        return ScalaAlgo::symmetric;
-    }
-    inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand )  {
 
-        return algo.pfilter(cpyEmb(embedding), cand);
+    }
+
+    inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand )  {
+        EmbeddingTmp e;
+        cpyEmb(embedding, &e);
+        return algo.pfilter(&e, cand);
 
     }
 
     inline  bool filter( const Embedding<uint32_t>* embedding)  {
-        return algo.filter(cpyEmb(embedding));
+        EmbeddingTmp e;
+        cpyEmb(embedding, &e);
+        return algo.filter(&e);
 
 
     }
-    inline void process(Embedding<uint32_t>* embedding, uint32_t step) {
-
-    }
-
     void update(){
         algo.pupdate();
     }
     inline bool match(Embedding<VertexId>* embedding){
-        return algo.match(cpyEmb(embedding));
+        EmbeddingTmp e;
+        cpyEmb(embedding, &e);
+        return algo.match(&e);
     }
     void init(){
 
@@ -67,12 +65,31 @@ public:
         no_items = items;
     }
 
-    void output(Embedding<VertexId>* embPre, Embedding<VertexId>* embPost){
-        algo.output(cpyEmb(embPre), cpyEmb(embPost));
-    }
-    void output(Embedding<VertexId>* embPre){
 
+    inline void output(Embedding<VertexId>* embPre, Embedding<VertexId>* embPost){
+        EmbeddingTmp e;
+        cpyEmb(embPre, &e);
+        EmbeddingTmp e2;
+        cpyEmb(embPost, &e2);
+        algo.output(&e,&e2);
+
+        if(output_callback != NULL){
+            output_callback(&e, 1);
+        }
     }
+    inline void output(Embedding<VertexId>* embedding){
+        EmbeddingTmp e;
+        cpyEmb(embedding, &e);
+        algo.output_single(&e);
+
+        if(output_callback != NULL){
+            output_callback(embedding, 1);
+        }
+    }
+    inline void output(Embedding<VertexId>* embedding, int tid){
+        output(embedding);
+    }
+
     void output_final(){
         printf("Found %lu items\n", no_items);
 //        algo.output();
@@ -80,7 +97,6 @@ public:
 //TODO
     }
 };
-bool ScalaAlgo::symmetric = false;
 
 #endif //TESSERACT_SCALA_ALGOS_H
 

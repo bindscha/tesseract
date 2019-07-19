@@ -23,9 +23,7 @@ public:
 
     }
 
-    inline void output(const Embedding<VertexId>* embedding, const int tid){
 
-    }
     inline void output(const Embedding<VertexId>* embedding){
         int no_edg = 0;
         for(int i = 0; i < embedding->no_vertices(); i++){
@@ -42,6 +40,9 @@ public:
             //TODO print del if update type == DEL
         }
         //TODO VertexDel is covered by this, but we  can add special case if need be
+//        if(output_callback != NULL){
+//            output_callback(embedding, 1);
+//        }
     }
 
     inline bool match(const Embedding<VertexId>* embedding) const{
@@ -57,7 +58,9 @@ public:
         }
         return true;
     }
-
+    inline void output(const Embedding<VertexId>* embedding, const int tid){
+        output(embedding);
+    }
     inline bool pattern_filter(const uint32_t cand ) const {
 
         return degree[cand] >=K - 1;

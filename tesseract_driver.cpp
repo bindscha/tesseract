@@ -14,7 +14,8 @@ size_t b_size = 0,initial_chunk = 0;
 int main(int argc, char** argv)  {
     Configuration* configuration = new Configuration();
     GraphInputFiles* graphInput = new GraphInputFiles();
-    while ((c = getopt(argc, argv, "f:d:vein:t:b:u:k:c:a:w:W:m")) != -1) {
+    bool del = false;
+    while ((c = getopt(argc, argv, "f:d:n:t:b:uc:a:r")) != -1) {
         switch (c) {
             case 'f':
                 graphInput->input_file = optarg;
@@ -41,7 +42,6 @@ int main(int argc, char** argv)  {
                 break;
             case 'u':
                 do_updates = 1;
-                update_file = optarg;
 
                 printf("Running updates \n");
                 break;
@@ -50,23 +50,24 @@ int main(int argc, char** argv)  {
                 initial_chunk = stoul(tmp); //preload initial_chunk updates before starting to apply updates
                 printf("Preloading %lu updates\n ", initial_chunk);
                 break;
-            case 'k':
-//              K = atoi(optarg);
+            case 'r': //UPDATES ARE REMOVALS
+                initial_chunk = NB_EDGES;
+                del = true;
                 break;
             case 'a': //Algo
                 configuration->algorithm_id = atoi(optarg);
                 break;
-            case 'm':
-                _mmap = true;
-                printf("MMAP-ing input and output\n");
-                break;
+//            case 'm':
+//                _mmap = true;
+//                printf("MMAP-ing input and output\n");
+//                break;
         }
     }
 
     configuration->worker_id = 0;
     configuration->num_workers = 1;
     if(do_updates)
-        init_update_buf(b_size, NB_EDGES, NB_NODES,  initial_chunk);
+        init_update_buf(b_size, NB_EDGES, NB_NODES, 1, initial_chunk);
     //For single machine case with a file as input:
     setGraphInputFiles(graphInput);
     if(initial_chunk == 0)
@@ -85,7 +86,7 @@ int main(int argc, char** argv)  {
         }
         GraphUpdate* update_stream = new GraphUpdate[b_size];
         size_t no_batches = 1;
-        for(size_t j = initial_chunk; j < NB_EDGES;){//} j+= b_size){
+        for(size_t j = del?0 :initial_chunk; j < NB_EDGES;){//} j+= b_size){
             if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
             volatile size_t items_added = 0;
            volatile size_t i = 0;
@@ -95,7 +96,7 @@ int main(int argc, char** argv)  {
                 update_stream[items_added].src = edges_full[j+ i].src;
                 update_stream[items_added].dst = edges_full[j+ i].dst;
                 update_stream[items_added].ts = no_batches;
-                update_stream[items_added].tpe = EdgeAdd;
+                update_stream[items_added].tpe = del?EdgeDel: EdgeAdd;
                 items_added++;
             }
             j+=i;

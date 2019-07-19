@@ -61,7 +61,7 @@ public:
     size_t initial_chunk = 0;
     int no_threads = 1;
 
-    bool shuffle = true;//false;
+    bool shuffle = false;//false;
     std::vector<uint64_t> v;
     void shuffle_edge_idx(size_t _NB_EDGES){
 //      v.reserve(_NB_EDGES - initial_chunk);
@@ -113,12 +113,14 @@ public:
         no_up_currently = 0;
     }
     void preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads){
+        wait_b(&xsync_begin);
       size_t num = initial_chunk / no_threads;
-        printf("[STAT UP] Preloading %lu edges \n", initial_chunk);
-      size_t start = tid *num;
+
+      size_t start = (size_t)tid *num;
       size_t stop = start + num;
       if(tid == no_threads - 1) stop = initial_chunk;
-      wait_b(&xsync_begin);
+        printf("[TID : %d] Preloading [%lu - %lu] (%lu) edges \n",tid, start,stop, initial_chunk);
+
 //      size_t u_idx = __sync_fetch_and_add(&curr_batch_start,1);
       for(;start < stop; start++){
 //        if(e[v[start]].src > e[v[start]].dst) continue;
@@ -133,13 +135,16 @@ public:
         graph_edges[adj_offsets[src] + deg].ts = 0;
 
         deg = __sync_fetch_and_add(&degree[dst],1);
-        graph_edges[adj_offsets[dst] + deg].dst =src;
+
         graph_edges[adj_offsets[dst] + deg].src = dst;
+        graph_edges[adj_offsets[dst] + deg].dst = src;
         graph_edges[adj_offsets[dst] + deg].ts = 0;
 
       }
       wait_b(&xsync_end);
-      curr_batch_end = initial_chunk;
+
+//      curr_batch_end = initial_chunk;
+//      assert(degree[NB_NODES -1] == NB_EDGES - adj_offsets[NB_NODES - 1]);
     }
 
     inline size_t get_no_updates() const{

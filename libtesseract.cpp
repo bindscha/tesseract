@@ -49,15 +49,28 @@ void init(const Configuration *configuration) {
     printf("Initialized Tesseract worker %lu (out of %lu) for algorithm %lu\n", configuration->worker_id, configuration->num_workers, configuration->algorithm_id);
     switch(configuration->algorithm_id){
         case 100:{
-            printf("[INFO] Running external algo\n");
+            printf("[INFO] Running external algo symetric\n");
             if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,ScalaAlgo::getSymmetric(), updateBuf);
-                ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,true, updateBuf);
+                ( (DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo, UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
             }
             else {
                 e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
-                                                                                                   ScalaAlgo::getSymmetric());
+                                                                                                   true);
                 ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+            }
+            break;
+        }
+        case 101:{
+            printf("[INFO] Running external algo non symmetric\n");
+            if(do_updates){
+                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,false, updateBuf);
+                ( (DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo,UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
+            }
+            else {
+                e = new StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
+                                                                                                   false);
+                ( (StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
             }
             break;
         }
@@ -65,6 +78,10 @@ void init(const Configuration *configuration) {
         {
             printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
             if(do_updates){
+                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
+                do_updates = false;
+                e_tmp->execute_app();
+                do_updates = true;
                 e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
             }
             else
@@ -119,7 +136,6 @@ void set_algorithm(const Algorithm *_algorithm) {
     algorithm.match = _algorithm->match;
     algorithm.output = _algorithm->output;
     algorithm.init = _algorithm->init;
-    ScalaAlgo::setSymmetric(true);
 }
 
 void start() {
@@ -140,26 +156,26 @@ void stop() {
     e->stop();
     if(do_updates) wait_b(&updateBuf->updates_consumed);
 }
-void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk){
-    updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk);
+void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes,int no_threads, size_t initial_chunk){
+    updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk,no_threads);
 }
 
 void preloadChunk(const size_t chunk_size, Configuration* configuration){
     printf("[STAT] Preloading %lu updates\n", chunk_size);
-    std::thread** threads = (std::thread**) calloc(configuration->no_threads, sizeof(std::thread*));
-    for (int i = 0; i < configuration->no_threads - 1; i++) {
-        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, (int)configuration->no_threads);
-    }
-    updateBuf->preload_edges_before_update(edges_full, 0, edges, configuration->no_threads);
+//    std::thread** threads = (std::thread**) calloc(1, sizeof(std::thread*)); //configuration->no_threads - 1, sizeof(std::thread*));
+//    for (int i = 0; i < 1; i++){///configuration->no_threads - 1; i++) {
+//        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, 2);//(int)configuration->no_threads);
+//    }
+    updateBuf->preload_edges_before_update(edges_full, 0, edges,1);// configuration->no_threads);
 
     printf("[INFO] Preload done\n");
-    for(int i =0; i < configuration->no_threads-1; i++){
-        threads[i]->join();
-    }
-    for (int i = 0; i < configuration->no_threads - 1; i++) {
-        delete threads[i];
-    }
-    free(threads);
+//    for(int i =0; i < 1;i++){//configuration->no_threads-1; i++){
+//        threads[i]->join();
+//    }
+//    for (int i = 0; i < configuration->no_threads - 1; i++) {
+//        delete threads[i];
+//    }
+//    free(threads);
 
     //TODO Compute on the preloaded chunk
 
@@ -202,7 +218,15 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
 }
 
 void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
-    output_random_stuff();
+//    output_random_stuff();
+//TODO Mark edges as deleted, decrement degree 
+    uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
+//        if((true)){//
+    if(h_src % e->getNoWorkers()  == e->getWid()     ) {
+        updateBuf->updates[updateBuf->get_no_updates()].src = src;
+        updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+        updateBuf->incNoUpdates();
+    }
     printf("Received del edge %u->%u (ts=%u)\n", src, dst, ts);
 }
 

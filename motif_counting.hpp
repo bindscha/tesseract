@@ -55,6 +55,12 @@ public:
             i++;
             pattern_id1 = pattern_id1 << 2;
         }
+
+        if(updateType == GraphUpdateType::EdgeDel) per_thread_patterns[tid][pattern_id1]--;
+        else{
+            per_thread_patterns[tid][pattern_id1]++;
+        }
+        if(!do_updates) return;
         int pattern_id2= 0;
         i = 0;
         if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
@@ -75,10 +81,7 @@ public:
                 pattern_id2 = pattern_id2 << 2;
             }
         }
-        if(updateType == GraphUpdateType::EdgeDel) per_thread_patterns[tid][pattern_id1]--;
-        else{
-        per_thread_patterns[tid][pattern_id1]++;
-        }
+
         if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
             per_thread_patterns[tid][pattern_id2]--;
         }

@@ -87,7 +87,7 @@ extern uint32_t *degree;
 extern uint32_t *degree_in;
 extern size_t* adj_offsets;
 extern size_t* adj_offsets_in;
-extern uint32_t* active;//[NB_NODES];
+extern uint32_t* active;//[NB_NODES];3
 extern uint32_t* active_next;//[NB_NODES];
 extern uint64_t no_active, no_active_next;
 extern bool* in_frontier;

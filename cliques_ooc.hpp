@@ -10,7 +10,7 @@ public:
 
     inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand )  {
 
-        return embedding->no_vertices() < K && degree[cand] >=K - 1;
+        return  degree[cand] >=K - 1;
     }
 
     inline  bool filter( const Embedding<uint32_t>* embedding)  {
@@ -32,9 +32,7 @@ public:
         no_cliques = items;
         total += no_cliques;
     }
-    inline void output(const Embedding<VertexId>* embedding, const int tid){
 
-    }
     inline void output(const Embedding<VertexId>* embedding){
         int no_edg = 0;
         for(int i = 0; i < embedding->no_vertices(); i++){
@@ -53,7 +51,9 @@ public:
         //TODO VertexDel is covered by this, but we  can add special case if need be
     }
 
-
+    inline void output(const Embedding<VertexId>* embedding, const int tid){
+        output(embedding);
+    }
     void init(){
         if(!do_updates)
             for (uint32_t i = 0; i < NB_NODES; i++) {

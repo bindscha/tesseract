@@ -60,6 +60,7 @@ typedef void (*pupdate_fun_ptr_t)();
 typedef bool (*filter_fun_ptr_t)(const EmbeddingTmp *embedding);
 typedef bool (*match_fun_ptr_t)(const EmbeddingTmp *embedding);
 typedef void (*output_fun_ptr_t)(const EmbeddingTmp *pre_embedding, const EmbeddingTmp *post_embedding);
+typedef void (*output_single_fun_ptr_t)(const EmbeddingTmp *pre_embedding);
 
 typedef struct {
     init_fun_ptr_t init;
@@ -68,6 +69,7 @@ typedef struct {
     filter_fun_ptr_t filter;
     match_fun_ptr_t match;
     output_fun_ptr_t output;
+    output_single_fun_ptr_t output_single;
 } Algorithm;
 
 extern "C" typedef void (*output_callback_fun_t)(const void *buffer, const size_t num_entries);
@@ -104,8 +106,8 @@ extern "C" void unset_output_callback();
 extern Algorithm algorithm;
 extern GraphUpdateType updateType;
 //TODO Add functions for initializing the update buffer structure
-
-extern "C" void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, size_t initial_chunk);
+extern output_callback_fun_t output_callback;
+extern "C" void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes, int no_threads, size_t initial_chunk);
 //
 // END NEW API
 //

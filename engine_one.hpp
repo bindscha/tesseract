@@ -101,8 +101,8 @@ class StaticExploreNonSym{
             const bool filter = algo.filter(embedding);
             if(filter){
                 if(algo.match(embedding)){
-                    algo.output(embedding);
-                    per_thread_data++;
+                    algo.output(embedding,tid);
+                    per_thread_data[tid]++;
                 }
                 if(step < K-1)
                     explore_nonSym(embedding, step + 1, tid, &neighbours);
@@ -272,7 +272,6 @@ public:
                         e_cache->insert(first, second, third, &per_thread_e_cache_buffer[i][j]);
                     }
                     per_thread_e_cache_buffer[i].clear();
-                    //fprintf(stderr, " done!\n");
                 }
                 //fprintf(stderr, "Cache contains %lu entries!\n", e_cache->num_entries());
             }
@@ -331,58 +330,6 @@ public:
                 }
                 if(step < K -1)
                     explore(embedding, step + 1 , tid, &neighbours, &ignore);
-//                if(step < K -1 )
-//                    explore(embedding, step + 1 , tid, &neighbours, &ignore);
-//                else{
-//                    algo.process_update_tid(embedding,step, tid);
-
-//                    std::array<uint32_t,K> deg;
-//                    std::array<uint32_t,K> deg2;
-//                    int no_edg = 0;
-//                    for(int i = 0; i < embedding->no_vertices(); i++){
-//                        deg[i] = embedding->vertex_degree_at_index(i);
-//#ifdef EDGE_TIMESTAMPS
-//                        deg2[i] = embedding->old_vertex_degree_at_index(i);
-//                        no_edg += embedding->old_vertex_degree_at_index(i);
-//#endif
-//                }
-//                    std::sort(deg.begin(),deg.end());
-//                    int pattern_id1 = 0;
-//                    int i = 0;
-//
-//                    for(const auto &item: deg){
-//
-//                        pattern_id1 = pattern_id1 | (int)item;
-//
-//                        if(i == embedding->no_vertices() - 1 )break;
-//                        i++;
-//                        pattern_id1 = pattern_id1 << 2;
-//                    }
-//                    int pattern_id2= 0;
-//                    i = 0;
-//                    if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
-//                    else {
-//                        std::sort(deg2.begin(), deg2.end());
-//                        for (const auto &item: deg2) {
-//
-//                            if (item == 0) {
-//                                pattern_id2 = 0;
-//                                break;
-//                            }
-//                            pattern_id2 = pattern_id2 | (int) item;
-//
-//                            if (i == embedding->no_vertices() - 1)break;
-//                            i++;
-//                            pattern_id2 = pattern_id2 << 2;
-//                        }
-//                    }
-//                    per_thread_patterns[tid][pattern_id1]++;
-//
-//                    if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
-//                        per_thread_patterns[tid][pattern_id2]--;
-//                    }
-
-
                 }
                 embedding->pop();
             }
@@ -429,6 +376,8 @@ public:
         for(int i = 0; i < no_threads; i++)
             delete threads[i];
         free(threads);
+        free(per_thread_data);
+        free(thread_work);
     }
     virtual void execute_app(){
 
@@ -441,6 +390,7 @@ class StaticEngineDriver: public EngineDriver{
 
     E* exploreEngine;
     A algo;
+    size_t edges_processed = 0;
     void compute(void* c) {
         int tid = (long) c;
         begin:
@@ -451,6 +401,7 @@ class StaticEngineDriver: public EngineDriver{
         Embedding<VertexId> embedding;
         while (curr_item < no_active) {
             get_work(tid, &thread_work[tid], no_active);
+            __sync_fetch_and_add(&edges_processed, (thread_work[tid].stop - thread_work[tid].start));
             if (thread_work[tid].start == thread_work[tid].stop) goto end;
             for (; thread_work[tid].start < thread_work[tid].stop; thread_work[tid].start++) {
                 VertexId src, dst;
@@ -493,7 +444,9 @@ class StaticEngineDriver: public EngineDriver{
       end:
         wait_b(&xsync_end);
 
-        if (tid != 0 && !do_updates) goto begin;
+        if (tid != 0 ) goto begin;
+
+        printf("Threads processed %lu edges\n",edges_processed);
     }
 public:
     StaticEngineDriver(int no_threads, bool symm):EngineDriver(no_threads,symm){
@@ -520,7 +473,6 @@ public:
         uint64_t cand = 0;
         compute(0);
         curr_item = 0;
-
        size_t no_triangles = 0;
         for (int i = 0; i < no_threads; i++) {
             no_triangles += per_thread_data[i];
