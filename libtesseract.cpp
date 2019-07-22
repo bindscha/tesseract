@@ -209,6 +209,7 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
 
     uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
 //        if((true)){//
+
     if(h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
@@ -221,13 +222,28 @@ void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
 //    output_random_stuff();
 //TODO Mark edges as deleted, decrement degree 
     uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
+    if(dst < src) return;
+
+   for(size_t i = 0; i < degree[src]; i++){
+        if(edges[adj_offsets[src] + i].dst == dst) {
+            edges[adj_offsets[src] + i].ts = ts;
+            break;
+        }
+   }
+
+    for(size_t i = 0; i < degree[dst]; i++){
+        if(edges[adj_offsets[dst] + i].dst == src) {
+            edges[adj_offsets[dst] + i].ts = ts;
+            break;
+        }
+    }
 //        if((true)){//
     if(h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
         updateBuf->incNoUpdates();
     }
-    printf("Received del edge %u->%u (ts=%u)\n", src, dst, ts);
+//    printf("Received del edge %u->%u (ts=%u)\n", src, dst, ts);
 }
 
 void vertex_label_is(const VertexId id, const char *key, const void *value, const Timestamp ts) {

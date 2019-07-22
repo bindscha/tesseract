@@ -408,6 +408,8 @@ class StaticEngineDriver: public EngineDriver{
 
                 src = edges[active[thread_work[tid].start]].src;
                 dst = edges[active[thread_work[tid].start]].dst;
+//                if(src == 0 || dst == 0)
+//                    continue;
                 if (dst < src) continue;
                 if(!algo.pattern_filter(&embedding,src)) continue;
                 embedding.append(src);

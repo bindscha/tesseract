@@ -51,7 +51,8 @@ int main(int argc, char** argv)  {
                 printf("Preloading %lu updates\n ", initial_chunk);
                 break;
             case 'r': //UPDATES ARE REMOVALS
-                initial_chunk = NB_EDGES;
+                updateType = GraphUpdateType::EdgeDel;
+                printf("Deleting edges \n");
                 del = true;
                 break;
             case 'a': //Algo
@@ -66,10 +67,11 @@ int main(int argc, char** argv)  {
 
     configuration->worker_id = 0;
     configuration->num_workers = 1;
-    if(do_updates)
-        init_update_buf(b_size, NB_EDGES, NB_NODES, 1, initial_chunk);
+
     //For single machine case with a file as input:
     setGraphInputFiles(graphInput);
+    if(do_updates)
+        init_update_buf(b_size, NB_EDGES, NB_NODES, 1, del? NB_EDGES :initial_chunk);
     if(initial_chunk == 0)
      init(configuration);
 
@@ -79,30 +81,56 @@ int main(int argc, char** argv)  {
 
     if(do_updates){
         if(initial_chunk != 0 ){
-            preloadChunk(initial_chunk,configuration);
+            preloadChunk(del?NB_EDGES:initial_chunk,configuration); // If deletions, load the entire graph
             init(configuration);
             engine_th = std::thread(start);
             printf("Done preloading\n");
+
         }
         GraphUpdate* update_stream = new GraphUpdate[b_size];
         size_t no_batches = 1;
-        for(size_t j = del?0 :initial_chunk; j < NB_EDGES;){//} j+= b_size){
+        size_t total_added = 0;
+//        for(size_t j = NB_EDGES -1; total_added < initial_chunk && j >= 0; ){ //DELETE EDGES AT END
+//            size_t items_added = 0;
+//            size_t i = 0;
+//            for(; items_added < b_size && j >= 0; j--){//} i++){
+//                if(edges_full[j ].src > edges_full[j].dst)continue;
+////                if(edges_full[j ].src != 0)continue;
+//                update_stream[items_added].src = edges_full[j].src;
+//                update_stream[items_added].dst = edges_full[j].dst;
+//                update_stream[items_added].ts = no_batches;
+//                update_stream[items_added].tpe = del?EdgeDel: EdgeAdd;
+//                items_added++;
+//                total_added++;
+//                if(total_added == initial_chunk) break;
+//            }
+////            j-=i;
+////            total_added += items_added;
+//            printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
+//            no_batches++;
+//            batch_new(update_stream, items_added);
+//            if(total_added == initial_chunk) break;
+//        }
+        for(size_t j = del?0 : initial_chunk; del? (j < initial_chunk|| j<NB_EDGES) : j< NB_EDGES;){ //Deletes/Adds first INITIAL_CHUNK_EDGES
             if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
-            volatile size_t items_added = 0;
-           volatile size_t i = 0;
-            for( ;items_added < b_size && j + i < NB_EDGES; i++ ) {
-                if(edges_full[j + i].src > edges_full[j + i].dst) continue;
 
-                update_stream[items_added].src = edges_full[j+ i].src;
-                update_stream[items_added].dst = edges_full[j+ i].dst;
+            volatile size_t items_added = 0;
+            for( ;items_added < b_size && j < NB_EDGES ; j++ ) {
+                if(edges_full[j].src > edges_full[j ].dst) continue;
+//                if(edges_full[j].src != 0 )continue;
+                update_stream[items_added].src = edges_full[j].src;
+                update_stream[items_added].dst = edges_full[j].dst;
                 update_stream[items_added].ts = no_batches;
                 update_stream[items_added].tpe = del?EdgeDel: EdgeAdd;
                 items_added++;
+                total_added++;
+                if(del && total_added == initial_chunk) break;
             }
-            j+=i;
+
             printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
             no_batches++;
             batch_new(update_stream, items_added);
+            if(total_added == initial_chunk) break;
         }
         //Start update engine
     }

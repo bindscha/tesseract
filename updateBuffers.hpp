@@ -118,7 +118,7 @@ public:
 
       size_t start = (size_t)tid *num;
       size_t stop = start + num;
-      if(tid == no_threads - 1) stop = initial_chunk;
+      if(tid == no_threads - 1) stop =  initial_chunk;
         printf("[TID : %d] Preloading [%lu - %lu] (%lu) edges \n",tid, start,stop, initial_chunk);
 
 //      size_t u_idx = __sync_fetch_and_add(&curr_batch_start,1);

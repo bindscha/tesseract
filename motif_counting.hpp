@@ -56,11 +56,13 @@ public:
             pattern_id1 = pattern_id1 << 2;
         }
 
-        if(updateType == GraphUpdateType::EdgeDel) per_thread_patterns[tid][pattern_id1]--;
+        if((updateType == GraphUpdateType::EdgeDel) && do_updates) {
+            per_thread_patterns[tid][pattern_id1]--;
+        }
         else{
             per_thread_patterns[tid][pattern_id1]++;
         }
-        if(!do_updates) return;
+        if(!do_updates || GraphUpdateType::EdgeDel == updateType) return;
         int pattern_id2= 0;
         i = 0;
         if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;

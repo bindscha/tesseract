@@ -30,7 +30,9 @@ public:
 
     inline void setItemsFound(size_t items){
         no_cliques = items;
-        total += no_cliques;
+//        if(do_updates && updateType == EdgeDel) total -= no_cliques;
+//        else
+            total+= no_cliques;
     }
 
     inline void output(const Embedding<VertexId>* embedding){
