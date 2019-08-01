@@ -26,7 +26,7 @@
 #include <thread>
 #include <mutex>
 
-#define CHUNK_SIZE 4
+#define CHUNK_SIZE 16
 struct thread_work_t{
     uint32_t start;
     uint32_t stop;
@@ -50,14 +50,14 @@ inline  void get_work(int tid, thread_work_t* t_work, uint32_t max){
 template <typename T,typename A>
 class StaticExploreSymmetric{
     A algo;
-    inline void explore_sym(Embedding<T> *embedding,const int step, int tid){
+    inline void explore_sym(Embedding<T> *embedding,const int step,const int tid){
         VertexId v_id = embedding->last();
         VertexId dst;
         FOREACH_EDGE_FWD(v_id, dst)
-            if(!algo.pattern_filter(embedding,dst)) continue;
+            if(algo.pattern_filter(embedding,dst)) continue;
             embedding->append(dst);
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
-            const bool filter = algo.filter(embedding);
+            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2; algo.filter(embedding);
             if(filter) {
                 if(step < K -1 ){
                     explore_sym(embedding, step + 1, tid);
@@ -165,7 +165,7 @@ public:
 template<typename T, typename A>
 class DynamicExploreSymmetric{
     A algo;
-    bool e_cache_enabled = true;//true;
+    bool e_cache_enabled = false;//true;
     int no_threads;
     EmbeddingsCache<VertexId> *e_cache;
 
@@ -177,7 +177,9 @@ class DynamicExploreSymmetric{
        std::bitset<NB_BITS>bits_ign (*ign);
 //        std::unordered_set<VertexId> ignore(*ign);
         FOREACH_EDGE_TS(v_id, dst, ts)
+            if (step >= 3 && dst < v_id) continue;
             if(bits_ign.test(dst)) continue;
+
             if (!algo.pattern_filter(embedding,dst))continue;
             bool hit = false;
             if(e_cache_enabled && step == 2) {
@@ -210,9 +212,9 @@ class DynamicExploreSymmetric{
                 continue;
             }
 
-            if (step < 3 && !canonic_check_r2_middle<VertexId>(dst, embedding, step)) continue;
+            if (step < 3 && !canonic_check_r2_middle(dst, embedding, step)) continue;
 
-            if (step >= 3 && dst < v_id) continue;
+
             if (step >= 3 && ts == embedding->max_ts()) {
                 uint64_t e1 = dst > v_id ? v_id : dst;// (uint64_t)dst << 32;
                 e1 = (e1 << 32) | (dst > v_id ? dst : v_id);
@@ -225,23 +227,16 @@ class DynamicExploreSymmetric{
                 }
             }
             embedding->append(dst);
-            const bool filter = algo.filter(embedding);
+            const bool filter = embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;//algo.filter(embedding);
             if(filter) {
-                if(step == K - 1) {
-                    per_thread_data[tid]++;
-//                    printf("(");
-//                    for(int k = 0; k < K ; k++){
-//                        printf("%u ",(*embedding)[k]);
-//                    }
-//                    printf(")\n");
-                }
-                else
-                {
+                if(step < K-1){
                     exploreSym(embedding, step + 1, tid, &bits_ign);//&ignore);
                     if (e_cache_enabled) {
                         per_thread_e_cache_buffer[tid].push_back(*embedding);
                     }
                 }
+                else per_thread_data[tid]++;
+
 //                if(algo.match(embedding)){
 ////                    algo.output(embedding);
 //                    per_thread_data[tid]++;
@@ -274,7 +269,7 @@ class DynamicExploreSymmetric{
 public:
     DynamicExploreSymmetric(int n_threads)  {
         no_threads = n_threads;
-        e_cache_enabled = true;// true;
+        e_cache_enabled = false;// true;
         if(e_cache_enabled) {
             e_cache = new EmbeddingsCache<uint32_t>(NB_NODES, DEFAULT_CACHE_SIZE);
             per_thread_e_cache_buffer = new std::vector<Embedding<uint32_t>>[no_threads];
@@ -357,7 +352,7 @@ public:
         for(VertexId n: neighbours){
             if(bits_ign.test(n)) continue;
 //            if(ignore.find(n) != ignore.end()) continue; // TODO this is can_expand in the paper
-            if(embedding->contains(n) || !canonic_check_r2_middle<VertexId>(n, embedding, step)) continue;
+            if(embedding->contains(n) || !canonic_check_r2_middle(n, embedding, step)) continue;
             embedding->append(n);
 
             const bool filter = true;//algo.filter(embedding);
@@ -386,6 +381,7 @@ public:
 
 
                     std::sort(deg.begin(), deg.end());
+
                     int pattern_id1 = 0;
                     int i = 0;
 
@@ -397,21 +393,11 @@ public:
                         i++;
                         pattern_id1 = pattern_id1 << 2;
                     }
-
-                    if((updateType == GraphUpdateType::EdgeDel) && do_updates) {
-                        per_thread_patterns[tid][pattern_id1]--;
-                    }
-                    else{
-                        per_thread_patterns[tid][pattern_id1]++;
-                    }
-                    if(!do_updates || GraphUpdateType::EdgeDel == updateType) return;
                     int pattern_id2= 0;
                     i = 0;
                     if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
                     else {
-//            std::sort(deg2, deg2 + K);
                         std::sort(deg2.begin(), deg2.end());
-
                         for (const auto &item: deg2) {
 
                             if (item == 0) {
@@ -425,10 +411,55 @@ public:
                             pattern_id2 = pattern_id2 << 2;
                         }
                     }
+                    per_thread_patterns[tid][pattern_id1]++;
 
                     if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
                         per_thread_patterns[tid][pattern_id2]--;
                     }
+
+//                    int pattern_id1 = 0;
+//                    int i = 0;
+//
+//                    for(const auto &item: deg){
+//
+//                        pattern_id1 = pattern_id1 | (int)item;
+//
+//                        if(i == embedding->no_vertices() - 1 )break;
+//                        i++;
+//                        pattern_id1 = pattern_id1 << 2;
+//                    }
+//
+////                    if((updateType == GraphUpdateType::EdgeDel) && do_updates) {
+////                        per_thread_patterns[tid][pattern_id1]--;
+////                    }
+////                    else{
+//                        per_thread_patterns[tid][pattern_id1]++;
+////                    }
+////                    if(!do_updates || GraphUpdateType::EdgeDel == updateType) return;
+//                    int pattern_id2= 0;
+//                    i = 0;
+//                    if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
+//                    else {
+////            std::sort(deg2, deg2 + K);
+//                        std::sort(deg2.begin(), deg2.end());
+//
+//                        for (const auto &item: deg2) {
+//
+//                            if (item == 0) {
+//                                pattern_id2 = 0;
+//                                break;
+//                            }
+//                            pattern_id2 = pattern_id2 | (int) item;
+//
+//                            if (i == embedding->no_vertices() - 1)break;
+//                            i++;
+//                            pattern_id2 = pattern_id2 << 2;
+//                        }
+//                    }
+//
+//                    if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
+//                        per_thread_patterns[tid][pattern_id2]--;
+//                    }
 
 //                    algo.output(embedding, tid);
                 }
@@ -442,45 +473,19 @@ public:
 
 
 class EngineDriver{
-protected:
-    bool symmetric = true;
-    std::thread** threads;
-    int no_workers = 1;
-    int w_id = 0;
-    x_barrier xsync_begin, xsync_end;
-    thread_work_t *thread_work;
-    int no_threads;
 public:
     virtual void stop(){
 
     }
 
-    inline int getNoWorkers(){
-        return no_workers;
-    }
-    inline int getWid(){
-        return w_id;
-    }
-    EngineDriver(int nb_threads, bool symm, int wid=0, int noWorker =1):no_threads(nb_threads){
-        threads = (std::thread**) calloc(no_threads - 1, sizeof(std::thread *));
-        init_barrier(&xsync_begin, no_threads);
-        init_barrier(&xsync_end, no_threads);
-        per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
-        thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
 
-        symmetric = symm;
-        w_id = wid;
-        no_workers = noWorker;
-        printf("[INFO] Finished engine init_graph_input\n");
+    EngineDriver(){
+
 
     }
 
-    virtual ~EngineDriver(){
-        for(int i = 0; i < no_threads; i++)
-            delete threads[i];
-        free(threads);
-        free(per_thread_data);
-        free(thread_work);
+    ~EngineDriver(){
+
     }
     virtual void execute_app(){
 
@@ -490,6 +495,14 @@ public:
 
 template<typename E, typename A>
 class StaticEngineDriver: public EngineDriver{
+    bool symmetric = true;
+    std::thread** threads;
+    int no_workers = 1;
+    int w_id = 0;
+    x_barrier xsync_begin, xsync_end;
+    thread_work_t *thread_work;
+    int no_threads;
+
 
     E* exploreEngine;
     A algo;
@@ -516,13 +529,13 @@ class StaticEngineDriver: public EngineDriver{
 //                if(src == 0 || dst == 0)
 //                    continue;
                 if (dst < src) continue;
-                if(!algo.pattern_filter(&embedding,src) || !algo.pattern_filter(&embedding,src)) continue;
-//                if(!algo.pattern_filter(&embedding,src)) continue;
-//                embedding.append(src);
-//                if( !algo.pattern_filter(&embedding,dst)) {
-//                    embedding.pop();
-//                    continue;
-//                }
+//                if(!algo.pattern_filter(&embedding,src) || !algo.pattern_filter(&embedding,src)) continue;
+                if(!algo.pattern_filter(&embedding,src)) continue;
+                embedding.append(src);
+                if( !algo.pattern_filter(&embedding,dst)) {
+                    embedding.pop();
+                    continue;
+                }
 
                 std::unordered_set <VertexId> neighbours; //I tried to make this a f() but too much overhead
                 if(!symmetric) {
@@ -534,7 +547,7 @@ class StaticEngineDriver: public EngineDriver{
                     ENDFOR
                 }
 
-                embedding.append(src);
+//                embedding.append(src);
                 embedding.append(dst);
 
                 exploreEngine->explore(&embedding, 2, tid, &neighbours,NULL);
@@ -558,8 +571,25 @@ class StaticEngineDriver: public EngineDriver{
         printf("Threads processed %lu edges\n",edges_processed);
     }
 public:
-    StaticEngineDriver(int no_threads, bool symm):EngineDriver(no_threads,symm){
+    inline int getNoWorkers(){
+        return no_workers;
+    }
+    inline int getWid(){
+        return w_id;
+    }
+    StaticEngineDriver(int nb_threads, bool symm, int wid=0, int noWorker =1):no_threads(nb_threads){
+        symmetric = symm;
         exploreEngine=  new E();
+        threads = (std::thread**) calloc(no_threads - 1, sizeof(std::thread *));
+        init_barrier(&xsync_begin, no_threads);
+        init_barrier(&xsync_end, no_threads);
+        per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
+        thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
+
+        symmetric = symm;
+        w_id = wid;
+        no_workers = noWorker;
+        printf("[INFO] Finished engine init_graph_input\n");
     }
     A* getAlgo(){
         return &algo;
@@ -568,6 +598,11 @@ public:
 
     }
     ~StaticEngineDriver(){
+        for(int i = 0; i < no_threads; i++)
+            delete threads[i];
+        free(threads);
+        free(per_thread_data);
+        free(thread_work);
     }
 
     void execute_app(){
@@ -595,6 +630,13 @@ public:
 
 template<typename E, typename A, typename U>
 class DynamicEngineDriver: public EngineDriver {
+    bool symmetric = true;
+    std::thread** threads;
+    int no_workers = 1;
+    int w_id = 0;
+    x_barrier xsync_begin, xsync_end;
+    thread_work_t *thread_work;
+    int no_threads;
     bool do_run = true;
     E *exploreEngine;
     A algo;
@@ -621,9 +663,9 @@ class DynamicEngineDriver: public EngineDriver {
 
                 if(dst< src) continue;
 //                if(!algo.pattern_filter(&embedding,src) || !algo.pattern_filter(&embedding,dst)) continue;
-                if(!algo.pattern_filter(&embedding,src)) continue;
+//                if(!algo.pattern_filter(&embedding,src)) continue;
                 embedding.append(src);
-                if(!algo.pattern_filter(&embedding, dst)){ embedding.pop(); continue;}// || !algo.pattern_filter(&embedding, src)) continue;
+//                if(!algo.pattern_filter(&embedding, dst)){ embedding.pop(); continue;}// || !algo.pattern_filter(&embedding, src)) continue;
 
 //                embedding.append(src);
                 embedding.append(dst);
@@ -679,11 +721,34 @@ class DynamicEngineDriver: public EngineDriver {
     }
 
 public:
-    DynamicEngineDriver(int no_threads, bool symm, U* uB):EngineDriver(no_threads,symm){
-        exploreEngine=  new E(no_threads);
+    inline int getNoWorkers(){
+        return no_workers;
+    }
+    inline int getWid(){
+        return w_id;
+    }
+    DynamicEngineDriver(int nb_threads, bool symm, U* uB, int wid = 0,  int noWorker =1):no_threads(nb_threads){
+        symmetric = symm;
+        exploreEngine=  new E(nb_threads);
+        threads = (std::thread**) calloc(no_threads - 1, sizeof(std::thread *));
+        init_barrier(&xsync_begin, no_threads);
+        init_barrier(&xsync_end, no_threads);
+        per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
+        thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
+
+        symmetric = symm;
+        w_id = wid;
+        no_workers = noWorker;
+
+        exploreEngine=  new E(nb_threads);
         uBuf = uB;
     }
     ~DynamicEngineDriver(){
+        for(int i = 0; i < no_threads; i++)
+            delete threads[i];
+        free(threads);
+        free(per_thread_data);
+        free(thread_work);
     }
     A* getAlgo(){
         return &algo;

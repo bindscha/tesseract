@@ -124,26 +124,18 @@ public:
       size_t start = (size_t)tid *num;
       size_t stop = start + num;
       if(tid == no_threads - 1) stop =  initial_chunk;
-//        printf("[TID : %d] Preloading [%lu - %lu] (%lu) edges \n",tid, start,stop, initial_chunk);
         size_t total_looped = 0;
-//      size_t u_idx = __sync_fetch_and_add(&curr_batch_start,1);
-      for(;start < stop && total_looped < NB_EDGES - 1000000;total_looped++){
+      for(;start < stop && total_looped < NB_EDGES - 1000000 ;total_looped++){
 
         if(e[vec->at(total_looped)].src >e[vec->at(total_looped)].dst) {
-//            printf("skip [%u - %u]\n",e[vec->at(total_looped)].src,e[vec->at(total_looped)].dst );
             continue;
         }
-          if(start < 10){
-//              printf("[U] %lu \n", vec->at(total_looped));
-          }
+
 
         start++;
         uint32_t src = e[vec->at(total_looped)].src;//*vec)[start]].src;
         uint32_t dst = e[vec->at(total_looped)].dst;
-//          printf("[%u - %u] \n",src,dst);
-//        if(e[start].src > e[start].dst) continue;
-//        uint32_t src = e[start].src;
-//        uint32_t dst = e[start].dst;
+
         assert(degree[src]>= 0);
         size_t deg = __sync_fetch_and_add(&degree[src],1);
         graph_edges[adj_offsets[src] + deg].src = src;

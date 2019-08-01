@@ -2,8 +2,8 @@
 #define __CANONIC_CHEKS_HPP__
 
 
-template<typename T>
-inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<T>* embedding, const uint32_t step){
+
+inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<VertexId>* embedding, const uint32_t step){
     uint32_t i = 0;
     bool foundNeighbour = false;
     uint32_t n_ts = embedding->max_ts();

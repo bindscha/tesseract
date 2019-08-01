@@ -3,7 +3,8 @@
 #include <iostream>
 #include "engine_one.hpp"
 #include "updateBuffers.hpp"
-EngineDriver* e;
+//DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>
+        EngineDriver* e;
 UpdateBuffer* updateBuf;
 GraphUpdateType updateType;
 //
@@ -78,10 +79,10 @@ void init(const Configuration *configuration) {
         {
             printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
             if(do_updates){
-                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
-                do_updates = false;
-                e_tmp->execute_app();
-                do_updates = true;
+//                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
+//                do_updates = false;
+//                e_tmp->execute_app();
+//                do_updates = true;
                 e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
             }
             else
@@ -92,11 +93,11 @@ void init(const Configuration *configuration) {
         {
             printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
             if(do_updates) {
-                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
-                do_updates = false;
-                e_tmp->execute_app();
-                do_updates = true;
-                printf("Done executing static part\n");
+//                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
+//                do_updates = false;
+//                e_tmp->execute_app();
+//                do_updates = true;
+//                printf("Done executing static part\n");
 //                delete(e_tmp);
                 e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
                         configuration->no_threads, false, updateBuf);
@@ -210,7 +211,7 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
     uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
 //        if((true)){//
 
-    if(h_src % e->getNoWorkers()  == e->getWid()     ) {
+    if(true){//h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
         updateBuf->incNoUpdates();
@@ -238,7 +239,7 @@ void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
         }
     }
 //        if((true)){//
-    if(h_src % e->getNoWorkers()  == e->getWid()     ) {
+    if(true){//h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
         updateBuf->incNoUpdates();

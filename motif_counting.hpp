@@ -116,7 +116,7 @@ public:
         if(!do_updates)
             for(uint32_t i = 0; i < NB_NODES; i++){
                 for(size_t idx = 0; idx < degree[i]; idx++) {
-                    if(edges_full[adj_offsets[i] + idx].dst > i) {
+                    if(edges[adj_offsets[i] + idx].dst > i) {
                         active[no_active] = adj_offsets[i] + idx;
                         no_active++;
                     }
