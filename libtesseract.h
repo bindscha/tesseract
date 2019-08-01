@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-
+#include<vector>
 //
 // BEGIN NEW API
 //
@@ -84,7 +84,7 @@ extern "C" void start();
 
 extern "C" void stop();
 
-extern "C" void preloadChunk(const size_t chunk_size, Configuration* configuration);
+extern "C" size_t preloadChunk(const size_t chunk_size, Configuration* configuration,std::vector<uint64_t>*vec);
 
 extern "C" void vertex_new(const VertexId id, const Timestamp ts);
 

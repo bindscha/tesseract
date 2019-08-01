@@ -6,14 +6,17 @@ class ColorCliqueE{
 
     size_t total = 0;
 public:
-    inline bool is_in_set(Embedding<uint32_t> embedding, uint32_t v_id, uint32_t step){
+    inline bool pattern_filter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
 
-        if(embedding.contains(v_id)) return true;
-
-        return false;
+        if(degree[cand] < K -1 )  return false;
+        for(int i = 0; i < embedding->no_vertices();i++){
+            if( (*embedding)[i] % K == cand % K) {
+                return false;
+            }
+        }
+        return true;
     }
-
-    inline bool filter( const Embedding<VertexId>* embedding){ //const uint32_t cand, const Embedding<uint32_t>* embedding,const uint32_t step)const  {
+    inline bool filter( const Embedding<VertexId>* embedding) const{ //const uint32_t cand, const Embedding<uint32_t>* embedding,const uint32_t step)const  {
 
 //        for(int i = 0; i < embedding->no_vertices() -1;i++){
 //            if( (*embedding)[i] % K == embedding->last() % K) return false;
@@ -23,8 +26,12 @@ public:
 
     }
 
+    inline bool match(const Embedding<VertexId>* embedding) const{
+        return embedding->no_vertices() == K;
+    }
 
-    inline void output(const Embedding<VertexId>* embedding){
+
+    inline void output(const Embedding<VertexId>* embedding) const{
         int no_edg = 0;
         for(int i = 0; i < embedding->no_vertices(); i++){
 #ifdef EDGE_TIMESTAMPS
@@ -45,26 +52,10 @@ public:
 //        }
     }
 
-    inline bool match(const Embedding<VertexId>* embedding) const{
-        return embedding->no_vertices() == K;
-    }
-    inline bool pattern_filter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
-
-        if(embedding->no_vertices() == K || degree[cand] < K -1 )  return false;
-        for(int i = 0; i < embedding->no_vertices();i++){
-            if( (*embedding)[i] % K == cand % K) {
-                return false;
-            }
-        }
-        return true;
-    }
-    inline void output(const Embedding<VertexId>* embedding, const int tid){
+    inline void output(const Embedding<VertexId>* embedding, const int tid) const{
         output(embedding);
     }
-    inline bool pattern_filter(const uint32_t cand ) const {
 
-        return degree[cand] >=K - 1;
-    }
     inline void setItemsFound(size_t items){
         no_cliques = items;
         total += items;
@@ -76,9 +67,9 @@ public:
     void init(){
         if(!do_updates)
             for (uint32_t i = 0; i < NB_NODES; i++) {
-                if (pattern_filter(i))//should_be_active(i))
+                if (degree[i] >= K - 1)//should_be_active(i))
                     for (size_t idx = 0; idx < degree[i]; idx++) {
-                        if (pattern_filter(edges_full[adj_offsets[i] + idx].dst) && edges_full[adj_offsets[i] + idx].dst >
+                        if (degree[edges_full[adj_offsets[i] + idx].dst] >= K - 1 && edges_full[adj_offsets[i] + idx].dst >
                                                                                     i)
                             active[no_active++] = adj_offsets[i] + idx;
                     }

@@ -5,12 +5,14 @@
 #include "libtesseract.h"
 #include "graph.hpp"
 #include <thread>
-
+#include <random>
+#include <algorithm>
 bool _mmap = false;
 bool indexed = false;
 int c;
 std::string tmp;
 size_t b_size = 0,initial_chunk = 0;
+
 int main(int argc, char** argv)  {
     Configuration* configuration = new Configuration();
     GraphInputFiles* graphInput = new GraphInputFiles();
@@ -76,12 +78,33 @@ int main(int argc, char** argv)  {
      init(configuration);
 
     std::thread engine_th;
+
     if(initial_chunk ==0)
        engine_th = std::thread(start); //start  Engine
 
     if(do_updates){
+        std::vector<uint64_t>* v = new std::vector<uint64_t>(NB_EDGES);
+//        std::generate(v->begin(), v->end(), [n = 0] () mutable { return n++; });
+
+        std::iota(std::begin(*v), std::end(*v), 0);
+        std::random_device rd;
+        std::mt19937_64 g(rd());
+
+        std::shuffle(v->begin(), v->end(), g);
+//        for(size_t i = 0; i < NB_EDGES;i++){
+//            bool found = false;
+//            for(auto a:*v){
+//                if (a == i) {
+//                    found = true;
+//                }
+//
+//            }
+//            assert(found);
+//        }
         if(initial_chunk != 0 ){
-            preloadChunk(del?NB_EDGES:initial_chunk,configuration); // If deletions, load the entire graph
+
+
+            initial_chunk = preloadChunk(del?NB_EDGES:initial_chunk,configuration, v); // If deletions, load the entire graph
             init(configuration);
             engine_th = std::thread(start);
             printf("Done preloading\n");
@@ -111,15 +134,23 @@ int main(int argc, char** argv)  {
 //            batch_new(update_stream, items_added);
 //            if(total_added == initial_chunk) break;
 //        }
+
         for(size_t j = del?0 : initial_chunk; del? (j < initial_chunk|| j<NB_EDGES) : j< NB_EDGES;){ //Deletes/Adds first INITIAL_CHUNK_EDGES
             if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
 
             volatile size_t items_added = 0;
+
             for( ;items_added < b_size && j < NB_EDGES ; j++ ) {
-                if(edges_full[j].src > edges_full[j ].dst) continue;
+//                if(j - initial_chunk  < 10){
+//                    printf("Adding %lu\n",v->at(j));
+//                }
+                if(edges_full[v->at(j)].src > edges_full[v->at(j) ].dst) continue;
+//                if(edges_full[j].src > edges_full[j ].dst) continue;
 //                if(edges_full[j].src != 0 )continue;
-                update_stream[items_added].src = edges_full[j].src;
-                update_stream[items_added].dst = edges_full[j].dst;
+                update_stream[items_added].src = edges_full[v->at(j)].src;
+                update_stream[items_added].dst = edges_full[v->at(j)].dst;
+//                update_stream[items_added].src = edges_full[j].src;
+//                update_stream[items_added].dst = edges_full[j].dst;
                 update_stream[items_added].ts = no_batches;
                 update_stream[items_added].tpe = del?EdgeDel: EdgeAdd;
                 items_added++;
@@ -130,7 +161,7 @@ int main(int argc, char** argv)  {
             printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
             no_batches++;
             batch_new(update_stream, items_added);
-            if(total_added == initial_chunk) break;
+//            if(total_added == NB_EDGES) break;
         }
         //Start update engine
     }

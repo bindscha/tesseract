@@ -243,7 +243,7 @@ public:
         }
     }
 
-    inline const V last() const{
+    inline const V last(){
         if (no_vertices_ > 0) {
             return vertices_[no_vertices_ - 1];
         } else {

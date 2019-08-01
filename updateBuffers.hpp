@@ -61,11 +61,16 @@ public:
     size_t initial_chunk = 0;
     int no_threads = 1;
 
-    bool shuffle = false;//false;
-    std::vector<uint64_t> v;
+    bool shuffle = true;//false;//false;
+   std::vector<uint64_t> v;
+    static size_t f (){
+        static int i = 0;
+        return i++;
+    }
     void shuffle_edge_idx(size_t _NB_EDGES){
 //      v.reserve(_NB_EDGES - initial_chunk);
-        std::iota(std::begin(v), std::end(v), 0);
+        std::generate(v.begin(), v.end(), UpdateBuffer::f);
+//        std::iota(std::begin(v), std::end(v), 0);
         std::random_device rd;
         std::mt19937_64 g(rd());
 
@@ -112,28 +117,39 @@ public:
     inline void resetNoUpdates(){
         no_up_currently = 0;
     }
-    void preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads){
+    size_t preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads, std::vector<uint64_t>* vec = NULL){
         wait_b(&xsync_begin);
       size_t num = initial_chunk / no_threads;
 
       size_t start = (size_t)tid *num;
       size_t stop = start + num;
       if(tid == no_threads - 1) stop =  initial_chunk;
-        printf("[TID : %d] Preloading [%lu - %lu] (%lu) edges \n",tid, start,stop, initial_chunk);
-
+//        printf("[TID : %d] Preloading [%lu - %lu] (%lu) edges \n",tid, start,stop, initial_chunk);
+        size_t total_looped = 0;
 //      size_t u_idx = __sync_fetch_and_add(&curr_batch_start,1);
-      for(;start < stop; start++){
-//        if(e[v[start]].src > e[v[start]].dst) continue;
-//        uint32_t src = e[v[start]].src;
-//        uint32_t dst = e[v[start]].dst;
-        if(e[start].src > e[start].dst) continue;
-        uint32_t src = e[start].src;
-        uint32_t dst = e[start].dst;
+      for(;start < stop && total_looped < NB_EDGES - 1000000;total_looped++){
+
+        if(e[vec->at(total_looped)].src >e[vec->at(total_looped)].dst) {
+//            printf("skip [%u - %u]\n",e[vec->at(total_looped)].src,e[vec->at(total_looped)].dst );
+            continue;
+        }
+          if(start < 10){
+//              printf("[U] %lu \n", vec->at(total_looped));
+          }
+
+        start++;
+        uint32_t src = e[vec->at(total_looped)].src;//*vec)[start]].src;
+        uint32_t dst = e[vec->at(total_looped)].dst;
+//          printf("[%u - %u] \n",src,dst);
+//        if(e[start].src > e[start].dst) continue;
+//        uint32_t src = e[start].src;
+//        uint32_t dst = e[start].dst;
+        assert(degree[src]>= 0);
         size_t deg = __sync_fetch_and_add(&degree[src],1);
         graph_edges[adj_offsets[src] + deg].src = src;
         graph_edges[adj_offsets[src] + deg].dst = dst;
         graph_edges[adj_offsets[src] + deg].ts = 0;
-
+          assert(degree[dst]>= 0);
         deg = __sync_fetch_and_add(&degree[dst],1);
 
         graph_edges[adj_offsets[dst] + deg].src = dst;
@@ -142,6 +158,7 @@ public:
 
       }
       wait_b(&xsync_end);
+      return total_looped;
 
 //      curr_batch_end = initial_chunk;
 //      assert(degree[NB_NODES -1] == NB_EDGES - adj_offsets[NB_NODES - 1]);
@@ -156,7 +173,7 @@ public:
     }
     void update_graph_structure(edge_ts* graph_edges,edge_full* in_stream, int w_id, int no_workers){
       curr_batch_start = curr_batch_end;
-      curr_ts++;
+
       no_up_currently=0;
 
       while(no_up_currently < batch_size &&  curr_batch_end < no_edges){
@@ -192,6 +209,7 @@ public:
           }
 
       }
+        curr_ts++;
 
     }
 

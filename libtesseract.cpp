@@ -48,32 +48,32 @@ void output_random_stuff() {
 void init(const Configuration *configuration) {
     printf("Initialized Tesseract worker %lu (out of %lu) for algorithm %lu\n", configuration->worker_id, configuration->num_workers, configuration->algorithm_id);
     switch(configuration->algorithm_id){
-        case 100:{
-            printf("[INFO] Running external algo symetric\n");
-            if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,true, updateBuf);
-                ( (DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo, UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
-            }
-            else {
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
-                                                                                                   true);
-                ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
-            }
-            break;
-        }
-        case 101:{
-            printf("[INFO] Running external algo non symmetric\n");
-            if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,false, updateBuf);
-                ( (DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo,UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
-            }
-            else {
-                e = new StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
-                                                                                                   false);
-                ( (StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
-            }
-            break;
-        }
+//        case 100:{
+//            printf("[INFO] Running external algo symetric\n");
+//            if(do_updates){
+//                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,true, updateBuf);
+//                ( (DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo, UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
+//            }
+//            else {
+//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
+//                                                                                                   true);
+//                ( (StaticEngineDriver<StaticExploreSymmetric<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+//            }
+//            break;
+//        }
+//        case 101:{
+//            printf("[INFO] Running external algo non symmetric\n");
+//            if(do_updates){
+//                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>,ScalaAlgo,UpdateBuffer>(configuration->no_threads,false, updateBuf);
+//                ( (DynamicEngineDriver<DynamicExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo,UpdateBuffer>*)e)->getAlgo()->setAlgo(&algorithm);
+//            }
+//            else {
+//                e = new StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>(configuration->no_threads,
+//                                                                                                   false);
+//                ( (StaticEngineDriver<StaticExploreNonSym<VertexId, ScalaAlgo>, ScalaAlgo>*)e)->getAlgo()->setAlgo(&algorithm);
+//            }
+//            break;
+//        }
         case 0:
         {
             printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
@@ -105,16 +105,16 @@ void init(const Configuration *configuration) {
                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
             break;
         }
-        case 2:
-        {
-            printf("[INFO] Running %d-LCliques with %d threads\n",K, configuration->no_threads);
-            if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
-            }
-            else
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
-            break;
-        }
+//        case 2:
+//        {
+//            printf("[INFO] Running %d-LCliques with %d threads\n",K, configuration->no_threads);
+//            if(do_updates){
+//                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
+//            }
+//            else
+//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
+//            break;
+//        }
         default: {
             printf("You need to have a valie algo id! \n");
             exit(1);
@@ -160,13 +160,13 @@ void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes,int no_thre
     updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk,no_threads);
 }
 
-void preloadChunk(const size_t chunk_size, Configuration* configuration){
+size_t preloadChunk(const size_t chunk_size, Configuration* configuration,std::vector<uint64_t>*vec){
     printf("[STAT] Preloading %lu updates\n", chunk_size);
 //    std::thread** threads = (std::thread**) calloc(1, sizeof(std::thread*)); //configuration->no_threads - 1, sizeof(std::thread*));
 //    for (int i = 0; i < 1; i++){///configuration->no_threads - 1; i++) {
 //        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, 2);//(int)configuration->no_threads);
 //    }
-    updateBuf->preload_edges_before_update(edges_full, 0, edges,1);// configuration->no_threads);
+    size_t ret = updateBuf->preload_edges_before_update(edges_full, 0, edges,1,vec);// configuration->no_threads);
 
     printf("[INFO] Preload done\n");
 //    for(int i =0; i < 1;i++){//configuration->no_threads-1; i++){
@@ -176,7 +176,7 @@ void preloadChunk(const size_t chunk_size, Configuration* configuration){
 //        delete threads[i];
 //    }
 //    free(threads);
-
+        return ret;
     //TODO Compute on the preloaded chunk
 
 }
@@ -226,7 +226,7 @@ void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
 
    for(size_t i = 0; i < degree[src]; i++){
         if(edges[adj_offsets[src] + i].dst == dst) {
-            edges[adj_offsets[src] + i].ts = ts;
+            edges[adj_offsets[src] + i]. ts = ts;
             break;
         }
    }
