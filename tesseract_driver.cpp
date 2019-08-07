@@ -11,6 +11,7 @@ bool _mmap = false;
 bool indexed = false;
 int c;
 std::string tmp;
+size_t NO_UP = 2160312;
 size_t b_size = 0,initial_chunk = 0;
 
 int main(int argc, char** argv)  {
@@ -83,28 +84,56 @@ int main(int argc, char** argv)  {
        engine_th = std::thread(start); //start  Engine
 
     if(do_updates){
-        std::vector<uint64_t>* v = new std::vector<uint64_t>(NB_EDGES);
+//        if(NO_UP > NB_EDGES )
+            NO_UP = NB_EDGES;
+//        std::vector<uint64_t> v(NB_EDGES);// = new std::vector<uint64_t>(NB_EDGES);
 //        std::generate(v->begin(), v->end(), [n = 0] () mutable { return n++; });
 
-        std::iota(std::begin(*v), std::end(*v), 0);
-        std::random_device rd;
-        std::mt19937_64 g(rd());
-
-        std::shuffle(v->begin(), v->end(), g);
-//        for(size_t i = 0; i < NB_EDGES;i++){
-//            bool found = false;
-//            for(auto a:*v){
-//                if (a == i) {
-//                    found = true;
-//                }
+//#pragma omp parallel for num_threads(56)
+//for(size_t i = 0; i < NB_EDGES;i++){
+//    v[i] = i;
+//}
+////        std::iota(std::begin(*v), std::end(*v), 0);
+////        std::random_device rd;
+////        std::mt19937_64 g(rd());
 //
-//            }
-//            assert(found);
+//        std::random_shuffle(v.begin(), v.end());
+//
+//
+//
+//        int fd_shuffle = open("/media/nvme/sosp2019_inputs/lj_shuffled", O_RDWR | O_CREAT | O_LARGEFILE|O_NOATIME, 0600);
+//        if(fd_shuffle == -1 ){
+//            perror("Failed to open file\n");
 //        }
+//        else{
+//            size_t to_mmap = NB_EDGES * sizeof(edge_full);
+//            if(to_mmap %4096 != 0){
+//                to_mmap = to_mmap + 4096 - NB_EDGES % 4096;
+//            }
+//            fallocate(fd_shuffle, 0, 0, to_mmap);
+//            edge_full* e_shuffled = (edge_full*) mmap(NULL,to_mmap, PROT_READ | PROT_WRITE, MAP_SHARED, fd_shuffle, 0);
+//            if(e_shuffled == MAP_FAILED){
+//                perror("Failed to mmap\n");
+//                exit(1);
+//            }
+//#pragma omp parallel for num_threads(56)
+//            for(size_t i = 0; i < NB_EDGES; i++){
+//                e_shuffled[i].src = edges_full[v.at(i)].src;
+//                e_shuffled[i].dst = edges_full[v.at(i)].dst;
+//            }
+//
+//            msync(e_shuffled,to_mmap, MS_SYNC);
+//            ftruncate(fd_shuffle,NB_EDGES *sizeof(edge_full));
+//            munmap(e_shuffled, to_mmap);
+//            close(fd_shuffle);
+//            exit(1);
+//
+//        }
+
         if(initial_chunk != 0 ){
 
 
-            initial_chunk = preloadChunk(del?NB_EDGES:initial_chunk,configuration, v); // If deletions, load the entire graph
+            initial_chunk = preloadChunk(del?NB_EDGES:NB_EDGES,configuration, NULL); // If deletions, load the entire graph
             init(configuration);
             engine_th = std::thread(start);
             printf("Done preloading\n");
@@ -135,7 +164,10 @@ int main(int argc, char** argv)  {
 //            if(total_added == initial_chunk) break;
 //        }
 
-        for(size_t j = del?0 : initial_chunk; del? (j < initial_chunk|| j<NB_EDGES) : j< NB_EDGES;){ //Deletes/Adds first INITIAL_CHUNK_EDGES
+        for(size_t j = 0 ; j < NO_UP;j++){
+            edges[j].ts = UINT64_MAX;
+        }
+        for(size_t j = del?0 : 0; del? (j < initial_chunk|| j<NB_EDGES) : j< NO_UP;){ //Deletes/Adds first INITIAL_CHUNK_EDGES
             if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
 
             volatile size_t items_added = 0;
@@ -144,11 +176,11 @@ int main(int argc, char** argv)  {
 //                if(j - initial_chunk  < 10){
 //                    printf("Adding %lu\n",v->at(j));
 //                }
-                if(edges_full[v->at(j)].src > edges_full[v->at(j) ].dst) continue;
+                if(edges_full[j].src > edges_full[j].dst) continue;//.at(j) ].dst) continue;
 //                if(edges_full[j].src > edges_full[j ].dst) continue;
 //                if(edges_full[j].src != 0 )continue;
-                update_stream[items_added].src = edges_full[v->at(j)].src;
-                update_stream[items_added].dst = edges_full[v->at(j)].dst;
+                update_stream[items_added].src = edges_full[j].src;
+                update_stream[items_added].dst = edges_full[j].dst;
 //                update_stream[items_added].src = edges_full[j].src;
 //                update_stream[items_added].dst = edges_full[j].dst;
                 update_stream[items_added].ts = no_batches;

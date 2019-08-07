@@ -24,7 +24,7 @@ char* update_file;
 bool do_updates = 0;
 
 
-bool has_edge_ts(uint32_t src, uint32_t dst, uint32_t ts,uint32_t* ts2){
+inline bool has_edge_ts(uint32_t src, uint32_t dst, uint32_t ts,uint32_t* ts2) {
   uint32_t tmp_dst, ts_t;
   FOREACH_EDGE_TS(src, tmp_dst, ts_t)
     if(dst == tmp_dst) {
@@ -103,7 +103,7 @@ if(!do_updates) {
 
 void init_graph_input(bool _mmap){
   degree = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
-  degree_in = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
+      degree_in = (uint32_t *) calloc(NB_NODES, sizeof(uint32_t));
 
   //Open edge file
   int fd = open(input_file, O_RDWR);
@@ -145,6 +145,10 @@ void init_graph_input(bool _mmap){
       b_read += b_r;
   }
       edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+    if(do_updates)
+    for(size_t i =0 ; i < NB_EDGES;i++){
+        edges[i].ts = UINT64_MAX;
+    }
     printf("NB_EDGES  %lu \n",NB_EDGES);
   }
 
@@ -154,20 +158,43 @@ void init_graph_input(bool _mmap){
 
   assert(NULL!=edges);
   if(!do_updates) {
-  for(uint32_t i = 0; i <NB_NODES;i++){
-    for(uint32_t  j = 0; j <degree[i];j++){
+//  for(uint32_t i = 0; i <NB_NODES;i++) {
+//      for (uint32_t j = 0; j < degree[i]; j++) {
+//          uint32_t dst = edges_full[adj_offsets[i] + j].dst;
+//          bool found = false;
+//          for (size_t k = 0; k < degree[dst]; k++) {
+//              if (i == edges_full[adj_offsets[dst] + k].dst) {
+//                  found = true;
+//                  break;
+//              }
+//
+//          }
+//          assert(found);
+//      }
+//  }
+//    printf("Graph is undirected");
+//    exit(0);
+
+//TODO PAralelize, too slow for bigger graphs
+#pragma omp parallel for num_threads(56)
+    for(uint32_t i = 0; i < NB_NODES; i++){
+        for(uint32_t j = 0; j < degree[i];j++){
+
+            if(edges_full[adj_offsets[i] + j].src != i){
+                printf("Problem with input %u-%u is in edge array, instea of %u-%u\n",edges_full[adj_offsets[i] + j].src , edges_full[adj_offsets[i] + j].dst, i);
+            }
       assert(edges_full[adj_offsets[i] + j].src == i);
 
       edges[adj_offsets[i] + j].src= i;
       edges[adj_offsets[i] + j].dst = edges_full[adj_offsets[i] + j].dst;
       edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i]+ j;
-      if(edges_full[adj_offsets[i]  +j].dst < i){
-        if(! has_edge_ts_set(edges[adj_offsets[i]  +j].dst,i,&edges[adj_offsets[i] + j].ts)){
-          edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i] +j;
-        }
-      }
-      else
-        edges[adj_offsets[i] + j].ts = adj_offsets[i] + j;
+//      if(edges_full[adj_offsets[i]  +j].dst < i){
+//        if(! has_edge_ts_set(edges[adj_offsets[i]  +j].dst,i,&edges[adj_offsets[i] + j].ts)){
+//          edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i] +j;
+//        }
+//      }
+//      else
+//        edges[adj_offsets[i] + j].ts = adj_offsets[i] + j;
       }
     }
   }

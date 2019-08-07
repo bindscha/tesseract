@@ -56,8 +56,8 @@ private:
     Edges timestamps_;
 #endif
 
-    inline size_t _edge_bit(size_t src_idx, size_t dst_idx) {
-        assert(src_idx != 0 && src_idx != dst_idx);
+    inline size_t _edge_bit(size_t src_idx, size_t dst_idx) const {
+//        assert(src_idx != 0 && src_idx != dst_idx);
         return 1 << (T_N[src_idx] + dst_idx);
     }
 
@@ -93,7 +93,7 @@ private:
     }
 #endif
 
-    inline bool _contains_edge(size_t src_idx, size_t dst_idx) {
+    inline bool _contains_edge(size_t src_idx, size_t dst_idx) const {
         if (src_idx > dst_idx) {
             return edges_ & _edge_bit(src_idx, dst_idx);
         } else if (src_idx < dst_idx) {
@@ -104,7 +104,7 @@ private:
     }
 
 #ifdef EDGE_TIMESTAMPS
-    inline bool _contains_edge_timestamp(size_t src_idx, size_t dst_idx) {
+    inline bool _contains_edge_timestamp(size_t src_idx, size_t dst_idx) const {
         if (src_idx > dst_idx) {
             return timestamps_ & _edge_bit(src_idx, dst_idx);
         } else if (src_idx < dst_idx) {
@@ -121,6 +121,7 @@ private:
 #ifdef EDGE_TIMESTAMPS
             Timestamp ts;
             FOREACH_EDGE_TS(vertices_[no_vertices_-1], dst, ts)
+
 #else
             FOREACH_EDGE(vertices_[no_vertices_-1], dst)
 #endif
@@ -299,7 +300,7 @@ public:
         return _find_index(vertex) != -1;
     }
 
-    inline const bool contains_edge_at_indices(size_t src_idx, size_t dst_idx) {
+    inline const bool contains_edge_at_indices(size_t src_idx, size_t dst_idx) const {
         return _contains_edge(src_idx, dst_idx);
     }
 
@@ -331,7 +332,7 @@ public:
         }
     }
 
-    inline const bool edge_at_indices_is_new(size_t src_idx, size_t dst_idx) {
+    inline const bool edge_at_indices_is_new(size_t src_idx, size_t dst_idx) const {
         return _contains_edge_timestamp(src_idx, dst_idx);
     }
 

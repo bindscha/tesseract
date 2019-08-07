@@ -62,25 +62,25 @@ public:
     int no_threads = 1;
 
     bool shuffle = true;//false;//false;
-   std::vector<uint64_t> v;
+
     static size_t f (){
         static int i = 0;
         return i++;
     }
-    void shuffle_edge_idx(size_t _NB_EDGES){
-//      v.reserve(_NB_EDGES - initial_chunk);
-        std::generate(v.begin(), v.end(), UpdateBuffer::f);
-//        std::iota(std::begin(v), std::end(v), 0);
-        std::random_device rd;
-        std::mt19937_64 g(rd());
-
-      std::shuffle(v.begin(), v.end(), g);
+//    void shuffle_edge_idx(size_t _NB_EDGES){
+////      v.reserve(_NB_EDGES - initial_chunk);
+//        std::generate(v.begin(), v.end(), UpdateBuffer::f);
+////        std::iota(std::begin(v), std::end(v), 0);
+//        std::random_device rd;
+//        std::mt19937_64 g(rd());
 //
-    }
+//      std::shuffle(v.begin(), v.end(), g);
+////
+//    }
 //    uint32_t* node_ts;
     size_t no_edges;
     UpdateBuffer(uint32_t _batch_size, uint64_t _NB_EDGES, uint32_t nb_nodes, size_t _initial_chunk = 0, int n = 1)
-            : batch_size(_batch_size), no_edges(_NB_EDGES), initial_chunk(_initial_chunk), no_threads(n), v(_NB_EDGES) {
+            : batch_size(_batch_size), no_edges(_NB_EDGES), initial_chunk(_initial_chunk), no_threads(n){//} v(_NB_EDGES) {
       //      node_bitset = (std::vector<bool> *) calloc(nb_nodes, sizeof(std::vector<bool>));
       init_barrier(&updates_ready, 2);
       init_barrier(&updates_consumed, 2);
@@ -98,8 +98,8 @@ public:
       // one for accumulating updates while updates from other are processed
       uint64_t i = 0;
       uint64_t equals = 0;
-      if(shuffle)
-        shuffle_edge_idx(_NB_EDGES);
+//      if(shuffle)
+//        shuffle_edge_idx(_NB_EDGES);
 
 //      for(size_t i  = 0; i <no_edges;i++){
 //        printf("%u->%u (%u->%u)\n",updates[i].src,updates[i].dst, e[i].src,e[i].dst);
@@ -125,25 +125,29 @@ public:
       size_t stop = start + num;
       if(tid == no_threads - 1) stop =  initial_chunk;
         size_t total_looped = 0;
-      for(;start < stop && total_looped < NB_EDGES - 1000000 ;total_looped++){
+      for(;start < stop && total_looped < NB_EDGES;total_looped++){
 
-        if(e[vec->at(total_looped)].src >e[vec->at(total_looped)].dst) {
+        if(e[total_looped].src >e[total_looped].dst){//->at(total_looped)].dst) {
             continue;
         }
 
 
         start++;
-        uint32_t src = e[vec->at(total_looped)].src;//*vec)[start]].src;
-        uint32_t dst = e[vec->at(total_looped)].dst;
+        uint32_t src = e[total_looped].src;//->at(total_looped)].src;//*vec)[start]].src;
+        uint32_t dst = e[total_looped].dst;//->at(total_looped)].dst;
 
         assert(degree[src]>= 0);
-        size_t deg = __sync_fetch_and_add(&degree[src],1);
+        assert(degree[0] <= (15402+ 975418));
+
+        size_t deg = degree[src];//__sync_fetch_and_add(&degree[src],1);
+          degree[src]++;
         graph_edges[adj_offsets[src] + deg].src = src;
         graph_edges[adj_offsets[src] + deg].dst = dst;
         graph_edges[adj_offsets[src] + deg].ts = 0;
           assert(degree[dst]>= 0);
-        deg = __sync_fetch_and_add(&degree[dst],1);
-
+        deg = degree[dst]; //__sync_fetch_and_add(&degree[dst],1);
+        degree[dst]++;
+          assert(degree[0] <= (15402+ 975418));
         graph_edges[adj_offsets[dst] + deg].src = dst;
         graph_edges[adj_offsets[dst] + deg].dst = src;
         graph_edges[adj_offsets[dst] + deg].ts = 0;
@@ -164,44 +168,44 @@ public:
       return curr_batch_end < no_edges;
     }
     void update_graph_structure(edge_ts* graph_edges,edge_full* in_stream, int w_id, int no_workers){
-      curr_batch_start = curr_batch_end;
-
-      no_up_currently=0;
-
-      while(no_up_currently < batch_size &&  curr_batch_end < no_edges){
-
-        uint32_t src = in_stream[v[curr_batch_end]].src;
-        uint32_t dst = in_stream[v[curr_batch_end]].dst;
-        curr_batch_end++;
-        if(src> dst) {continue;}
-
-          graph_edges[adj_offsets[src] + degree[src]].src = src;
-          graph_edges[adj_offsets[src] + degree[src]].dst = dst;
-          graph_edges[adj_offsets[src] + degree[src]].ts = curr_ts;
-//          node_ts[src] = curr_ts;
-          degree[src]++;
-
-          graph_edges[adj_offsets[dst] + degree[dst]].src = dst;
-          graph_edges[adj_offsets[dst] + degree[dst]].dst = src;
-          graph_edges[adj_offsets[dst] + degree[dst]].ts = curr_ts;
-//          node_ts[dst] = curr_ts;
-          degree[dst]++;
-//             if( !(src %(no_workers/2) == tid % (no_workers/2) && (dst%2 == (tid/(no_workers)) % 2) ) )continue;
-//             printf("TID %d processing %u (%u-%u)\n",tid,i,src,dst);
-//             __sync_fetch_and_add(&curr_item,1);
-        //             uint64_t e = (uint64_t) src << 32;
-//             e = e | dst;
-//             if(!(e % no_workers == tid))continue;
-        uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
-//        if((true)){//
-          if(h_src % no_workers == w_id ) {
-            this->updates[no_up_currently].src = src;
-            this->updates[no_up_currently].dst = dst;
-            no_up_currently++;
-          }
-
-      }
-        curr_ts++;
+//      curr_batch_start = curr_batch_end;
+//
+//      no_up_currently=0;
+//
+//      while(no_up_currently < batch_size &&  curr_batch_end < no_edges){
+//
+//        uint32_t src = in_stream[v[curr_batch_end]].src;
+//        uint32_t dst = in_stream[v[curr_batch_end]].dst;
+//        curr_batch_end++;
+//        if(src> dst) {continue;}
+//
+//          graph_edges[adj_offsets[src] + degree[src]].src = src;
+//          graph_edges[adj_offsets[src] + degree[src]].dst = dst;
+//          graph_edges[adj_offsets[src] + degree[src]].ts = curr_ts;
+////          node_ts[src] = curr_ts;
+//          degree[src]++;
+//
+//          graph_edges[adj_offsets[dst] + degree[dst]].src = dst;
+//          graph_edges[adj_offsets[dst] + degree[dst]].dst = src;
+//          graph_edges[adj_offsets[dst] + degree[dst]].ts = curr_ts;
+////          node_ts[dst] = curr_ts;
+//          degree[dst]++;
+////             if( !(src %(no_workers/2) == tid % (no_workers/2) && (dst%2 == (tid/(no_workers)) % 2) ) )continue;
+////             printf("TID %d processing %u (%u-%u)\n",tid,i,src,dst);
+////             __sync_fetch_and_add(&curr_item,1);
+//        //             uint64_t e = (uint64_t) src << 32;
+////             e = e | dst;
+////             if(!(e % no_workers == tid))continue;
+//        uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
+////        if((true)){//
+//          if(h_src % no_workers == w_id ) {
+//            this->updates[no_up_currently].src = src;
+//            this->updates[no_up_currently].dst = dst;
+//            no_up_currently++;
+//          }
+//
+//      }
+//        curr_ts++;
 
     }
 

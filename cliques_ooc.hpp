@@ -56,7 +56,7 @@ public:
             for (uint32_t i = 0; i < NB_NODES; i++) {
                 if (degree[i] >=K - 1)//should_be_active(i))
                     for (size_t idx = 0; idx < degree[i]; idx++) {
-                        if (degree[edges[adj_offsets[i] + idx].dst] >=K - 1 && edges[adj_offsets[i] + idx].dst >
+                        if (degree[edges_full[adj_offsets[i] + idx].dst] >=K - 1 && edges_full[adj_offsets[i] + idx].dst >
                                                                                     i)
                             active[no_active++] = adj_offsets[i] + idx;
                     }
