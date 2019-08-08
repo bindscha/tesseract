@@ -11,7 +11,7 @@ bool _mmap = false;
 bool indexed = false;
 int c;
 std::string tmp;
-size_t NO_UP = 2160312;
+size_t NO_UP = 10000000;
 size_t b_size = 0,initial_chunk = 0;
 
 int main(int argc, char** argv)  {
@@ -84,20 +84,21 @@ int main(int argc, char** argv)  {
        engine_th = std::thread(start); //start  Engine
 
     if(do_updates){
+//        initial_chunk = NB_EDGES ;
 //        if(NO_UP > NB_EDGES )
             NO_UP = NB_EDGES;
-//        std::vector<uint64_t> v(NB_EDGES);// = new std::vector<uint64_t>(NB_EDGES);
+        std::vector<uint64_t> v(NB_EDGES);// = new std::vector<uint64_t>(NB_EDGES);
 //        std::generate(v->begin(), v->end(), [n = 0] () mutable { return n++; });
 
 //#pragma omp parallel for num_threads(56)
-//for(size_t i = 0; i < NB_EDGES;i++){
-//    v[i] = i;
-//}
-////        std::iota(std::begin(*v), std::end(*v), 0);
+            for(size_t i = 0; i < NB_EDGES;i++){
+                v[i] = i;
+            }
+//        std::iota(std::begin(*v), std::end(*v), 0);
 ////        std::random_device rd;
 ////        std::mt19937_64 g(rd());
 //
-//        std::random_shuffle(v.begin(), v.end());
+        std::random_shuffle(v.begin(), v.end());
 //
 //
 //
@@ -163,26 +164,51 @@ int main(int argc, char** argv)  {
 //            batch_new(update_stream, items_added);
 //            if(total_added == initial_chunk) break;
 //        }
-
-        for(size_t j = 0 ; j < NO_UP;j++){
-            edges[j].ts = UINT64_MAX;
-        }
+//        int update_fd = open("/media/nvme/sosp2019_inputs/uk/uk_updates",O_RDONLY | O_CREAT | O_LARGEFILE|O_NOATIME, 0600);
+//        struct edge_full* updates = (edge_full*) malloc(NO_UP * sizeof(edge_full));
+//        size_t b_read = read(update_fd,updates, NO_UP *sizeof(edge_full));
+////        assert (b_read == NO_UP * sizeof(edge_full));
+//        NO_UP    = b_read / sizeof(edge_full);
+//        for(size_t j = 0 ; j < NO_UP;j++){
+//            uint32_t src = updates[j].src;
+//            uint32_t dst = updates[j].dst;
+//
+//            for(size_t i =0 ;i < degree[src];i++){
+//                uint32_t d = edges[adj_offsets[src]+i].dst;
+//                if(d == dst){
+//                    edges[adj_offsets[src] + i].ts = UINT64_MAX;
+//                    degree[src]--;
+//                    break;
+//                }
+//            }
+//            for(size_t i =0 ;i < degree[dst];i++){
+//                uint32_t d = edges[adj_offsets[dst]+i].dst;
+//                if(d == src){
+//                    edges[adj_offsets[dst] + i].ts = UINT64_MAX;
+//                    degree[dst]--;
+//                    break;
+//                }
+//            }
+//
+//        }
         for(size_t j = del?0 : 0; del? (j < initial_chunk|| j<NB_EDGES) : j< NO_UP;){ //Deletes/Adds first INITIAL_CHUNK_EDGES
             if(j + b_size > NB_EDGES) b_size = NB_EDGES - j;
 
             volatile size_t items_added = 0;
 
-            for( ;items_added < b_size && j < NB_EDGES ; j++ ) {
+            for( ;items_added < b_size && j < NO_UP ; j++ ) {
 //                if(j - initial_chunk  < 10){
 //                    printf("Adding %lu\n",v->at(j));
 //                }
-                if(edges_full[j].src > edges_full[j].dst) continue;//.at(j) ].dst) continue;
-//                if(edges_full[j].src > edges_full[j ].dst) continue;
+//                if(updates[j].src > updates[j].dst) continue;//.at(j) ].dst) continue;
+                if(edges_full[v[j]].src > edges_full[v[j] ].dst) continue;
 //                if(edges_full[j].src != 0 )continue;
-                update_stream[items_added].src = edges_full[j].src;
-                update_stream[items_added].dst = edges_full[j].dst;
+//                update_stream[items_added].src = updates[j].src;
+//                update_stream[items_added].dst = updates[j].dst;
 //                update_stream[items_added].src = edges_full[j].src;
 //                update_stream[items_added].dst = edges_full[j].dst;
+                update_stream[items_added].src = edges_full[v[j]].src;
+                update_stream[items_added].dst = edges_full[v[j]].dst;
                 update_stream[items_added].ts = no_batches;
                 update_stream[items_added].tpe = del?EdgeDel: EdgeAdd;
                 items_added++;

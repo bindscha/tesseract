@@ -125,7 +125,7 @@ public:
       size_t stop = start + num;
       if(tid == no_threads - 1) stop =  initial_chunk;
         size_t total_looped = 0;
-      for(;start < stop && total_looped < NB_EDGES;total_looped++){
+      for(;start < stop && total_looped  < NB_EDGES;total_looped++){
 
         if(e[total_looped].src >e[total_looped].dst){//->at(total_looped)].dst) {
             continue;

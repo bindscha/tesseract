@@ -24,7 +24,7 @@ char* update_file;
 bool do_updates = 0;
 
 
-inline bool has_edge_ts(uint32_t src, uint32_t dst, uint32_t ts,uint32_t* ts2) {
+ bool has_edge_ts(uint32_t src, uint32_t dst, uint32_t ts,uint32_t* ts2) {
   uint32_t tmp_dst, ts_t;
   FOREACH_EDGE_TS(src, tmp_dst, ts_t)
     if(dst == tmp_dst) {
@@ -90,10 +90,11 @@ if(!do_updates) {
     degree[NB_NODES - 1] = NB_EDGES - adj_offsets[NB_NODES - 1];
 
   uint64_t n_edges = 0;
-  for(uint32_t i = 0; i <NB_NODES;i++){
-      n_edges += degree[i];
-  }
-  assert(n_edges == NB_EDGES);
+
+//  for(uint32_t i = 0; i <NB_NODES;i++){
+//      n_edges += degree[i];
+//  }
+//  assert(n_edges == NB_EDGES);
 }
 }
 
@@ -147,7 +148,7 @@ void init_graph_input(bool _mmap){
       edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
     if(do_updates)
     for(size_t i =0 ; i < NB_EDGES;i++){
-        edges[i].ts = UINT64_MAX;
+        edges[i].ts = NB_EDGES;//UINT64_MAX;
     }
     printf("NB_EDGES  %lu \n",NB_EDGES);
   }

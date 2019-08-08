@@ -8,7 +8,7 @@ inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<VertexId> 
     bool foundNeighbour = false;
     Timestamp n_ts;
     bool old_ts = false;
-    for (size_t i = 0; i < embedding->no_vertices() - 1; i++) {
+    for (size_t i = 0; i < embedding->no_vertices() -1 ; i++) {
         uint32_t u = (*embedding)[i];
 //        if (!foundNeighbour) {
 //            if (embedding->contains_edge_at_indices(embedding->no_vertices() - 1,i)) {
@@ -55,7 +55,7 @@ inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<VertexId> 
         }
 //        if(!foundNeighbour && has_edge_ts(u, v, embedding->max_ts(), &n_ts)) foundNeighbour = true;
         else
-        if(foundNeighbour && u > v &&(( n_ts < embedding->max_ts() && u != (*embedding)[1] ) || n_ts == embedding->max_ts())) return false;
+        if(foundNeighbour && u > v &&( n_ts == embedding->max_ts() || ( n_ts < embedding->max_ts() && u != (*embedding)[1] ) )) return false;
     }
     return true;
 }

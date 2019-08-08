@@ -74,12 +74,12 @@ private:
         if (src_idx > dst_idx) {
             edges_ |= _edge_bit(src_idx, dst_idx);
             if (ts == max_ts_) {
-                timestamps_ |= _edge_bit(src_idx, dst_idx);
+                timestamps_ |= ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
             }
         } else if (src_idx < dst_idx) {
             edges_ |= _edge_bit(dst_idx, src_idx);
             if (ts == max_ts_) {
-                timestamps_ |= _edge_bit(dst_idx, src_idx);
+                timestamps_ |= ( 1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
             }
         }
     }
@@ -95,9 +95,9 @@ private:
 
     inline bool _contains_edge(size_t src_idx, size_t dst_idx) const {
         if (src_idx > dst_idx) {
-            return edges_ & _edge_bit(src_idx, dst_idx);
+            return edges_ & ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
         } else if (src_idx < dst_idx) {
-            return edges_ & _edge_bit(dst_idx, src_idx);
+            return edges_ & ( 1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
         } else {
             return false;
         }
@@ -106,9 +106,9 @@ private:
 #ifdef EDGE_TIMESTAMPS
     inline bool _contains_edge_timestamp(size_t src_idx, size_t dst_idx) const {
         if (src_idx > dst_idx) {
-            return timestamps_ & _edge_bit(src_idx, dst_idx);
+            return timestamps_ & ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
         } else if (src_idx < dst_idx) {
-            return timestamps_ & _edge_bit(dst_idx, src_idx);
+            return timestamps_ & ( 1 << (T_N[dst_idx] + src_idx));///_edge_bit(dst_idx, src_idx);
         } else {
             return false;
         }
@@ -128,7 +128,23 @@ private:
             for(size_t i = 0; i < no_vertices_; ++i) {
                 if (vertices_[i] == dst) {
 #ifdef EDGE_TIMESTAMPS
-                    _connect(no_vertices_-1, i, ts);
+                    size_t src_idx = no_vertices_-1;
+                    size_t dst_idx = i;
+                    if (src_idx == 0 && dst_idx == 1 || src_idx == 1 && dst_idx == 0) {
+                        max_ts_ = ts;
+                    }
+                    if (src_idx > dst_idx) {
+                        edges_ |= _edge_bit(src_idx, dst_idx);
+                        if (ts == max_ts_) {
+                            timestamps_ |= ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
+                        }
+                    } else if (src_idx < dst_idx) {
+                        edges_ |= _edge_bit(dst_idx, src_idx);
+                        if (ts == max_ts_) {
+                            timestamps_ |= ( 1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
+                        }
+                    }
+//                    _connect(no_vertices_-1, i, ts);
 #else
                     _connect(no_vertices_-1, i);
 #endif
@@ -210,8 +226,46 @@ public:
     }
 
     inline void append(V vertex) {
-        _append(vertex);
-        _add_edges();
+//        _append(vertex);
+        vertices_[no_vertices_++] = vertex;
+        if(no_vertices_ > 1) {
+            V dst;
+#ifdef EDGE_TIMESTAMPS
+            Timestamp ts;
+            FOREACH_EDGE_TS(vertices_[no_vertices_-1], dst, ts)
+
+#else
+                FOREACH_EDGE(vertices_[no_vertices_-1], dst)
+#endif
+                for(size_t i = 0; i < no_vertices_; ++i) {
+                    if (vertices_[i] == dst) {
+#ifdef EDGE_TIMESTAMPS
+                        size_t src_idx = no_vertices_-1;
+                        size_t dst_idx = i;
+                        if (src_idx == 0 && dst_idx == 1 || src_idx == 1 && dst_idx == 0) {
+                            max_ts_ = ts;
+                        }
+                        if (src_idx > dst_idx) {
+                            edges_ |= _edge_bit(src_idx, dst_idx);
+                            if (ts == max_ts_) {
+                                timestamps_ |= ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
+                            }
+                        } else if (src_idx < dst_idx) {
+                            edges_ |= _edge_bit(dst_idx, src_idx);
+                            if (ts == max_ts_) {
+                                timestamps_ |= ( 1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
+                            }
+                        }
+//                    _connect(no_vertices_-1, i, ts);
+#else
+                        _connect(no_vertices_-1, i);
+#endif
+                        break;
+                    }
+                }
+            ENDFOR
+        }
+//        _add_edges();
     }
 
     inline void append_no_edges(V vertex) {
@@ -269,7 +323,7 @@ public:
         }
     }
 
-    inline void pop() {
+    inline void pop()  {
         if (no_vertices_ == 0) {
             return;
         }
@@ -288,7 +342,18 @@ public:
             k = no_vertices_;
         }
         for (size_t i = 0; i < k; ++i) {
-            pop();
+            if (no_vertices_ == 0) {
+                return;
+            }
+            vertices_[--no_vertices_] = 0;
+            edges_ &= T_N_MASK[no_vertices_];
+#ifdef EDGE_TIMESTAMPS
+            timestamps_ &= T_N_MASK[no_vertices_];
+            if (no_vertices_ < 2) {
+                max_ts_ = 0;
+            }
+#endif
+//            pop();
         }
     }
 
@@ -332,8 +397,15 @@ public:
         }
     }
 
-    inline const bool edge_at_indices_is_new(size_t src_idx, size_t dst_idx) const {
-        return _contains_edge_timestamp(src_idx, dst_idx);
+    inline const bool edge_at_indices_is_new(const size_t src_idx,const size_t dst_idx) const {
+        if (src_idx > dst_idx) {
+            return timestamps_ & ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
+        } else if (src_idx < dst_idx) {
+            return timestamps_ & ( 1 << (T_N[dst_idx] + src_idx));///_edge_bit(dst_idx, src_idx);
+        } else {
+            return false;
+        }
+//        return _contains_edge_timestamp(src_idx, dst_idx);
     }
 
     inline const bool edge_is_new(V src, V dst) {

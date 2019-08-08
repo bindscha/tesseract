@@ -89,23 +89,23 @@ void init(const Configuration *configuration) {
                 e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
             break;
         }
-        case 1:
-        {
-            printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
-            if(do_updates) {
-//                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
-//                do_updates = false;
-//                e_tmp->execute_app();
-//                do_updates = true;
-//                printf("Done executing static part\n");
-//                delete(e_tmp);
-                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
-                        configuration->no_threads, false, updateBuf);
-            }
-           else
-               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
-            break;
-        }
+//        case 1:
+//        {
+//            printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
+//            if(do_updates) {
+////                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
+////                do_updates = false;
+////                e_tmp->execute_app();
+////                do_updates = true;
+////                printf("Done executing static part\n");
+////                delete(e_tmp);
+//                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
+//                        configuration->no_threads, false, updateBuf);
+//            }
+//           else
+//               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
+//            break;
+//        }
 //        case 2:
 //        {
 //            printf("[INFO] Running %d-LCliques with %d threads\n",K, configuration->no_threads);
