@@ -78,7 +78,7 @@ public:
         if (i == NULL) {
             return -1;
         } else {
-            return i->val;
+            return NULL;
         }
     }
 
