@@ -258,7 +258,7 @@ void edge_label_is(const VertexId src, const VertexId dst, const char *key, cons
 }
 
 void batch_new(const GraphUpdate *buffer, size_t num_entries) {
-    printf("Received new batch with %lu entries:\n", num_entries);
+//    printf("Received new batch with %lu entries:\n", num_entries);
     wait_b(&updateBuf->updates_consumed);
     updateBuf->resetNoUpdates() ;
     for(size_t i = 0; i < num_entries; ++i) {

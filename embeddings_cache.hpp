@@ -57,7 +57,7 @@ public:
         free(items_);
     }
 
-    inline item_t * operator[](size_t idx) {
+    inline item_t * operator[](const size_t idx) const{
         return items_[idx];
     }
 
@@ -69,7 +69,7 @@ public:
         return num_vertices_;
     }
 
-    inline size_t num_entries() {
+    inline size_t num_entries() const{
         return num_entries_;
     }
 
@@ -82,7 +82,7 @@ public:
         }
     }
 
-    inline item_t *get_item_at_line(uint32_t line, uint32_t idx) {
+    inline item_t *get_item_at_line(const uint32_t line, const uint32_t idx) const {
         item_t *i = NULL;
         HASH_FIND_INT(items_[line], &idx, i);
         return i;
@@ -103,6 +103,7 @@ public:
             free((void *) replaced);
         } else {
             ++num_entries_;
+
         }
     }
 

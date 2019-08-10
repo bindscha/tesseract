@@ -216,7 +216,7 @@ int main(int argc, char** argv)  {
                 if(del && total_added == initial_chunk) break;
             }
 
-            printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
+//            printf("Processed %lu of %lu (%lu) ^^^\n ", items_added, j, NB_EDGES);
             no_batches++;
             batch_new(update_stream, items_added);
 //            if(total_added == NB_EDGES) break;

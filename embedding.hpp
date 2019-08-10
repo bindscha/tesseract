@@ -421,7 +421,7 @@ public:
 
     inline void print() {
         fprintf(stderr, "%lu-embedding [ ", no_vertices());
-        for (size_t i = 0; i < MAX_SIZE; ++i) {
+        for (size_t i = 0; i < no_vertices(); ++i) {
             fprintf(stderr, "%lu ", vertices_[i]);
         }
         fprintf(stderr, "]");
