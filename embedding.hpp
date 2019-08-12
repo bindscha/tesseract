@@ -242,7 +242,7 @@ public:
 #else
                 FOREACH_EDGE(vertices_[no_vertices_-1], dst)
 #endif
-                for (size_t i = 0; i < no_vertices_; ++i) {
+                for (size_t i = 0; i < no_vertices_ -1 ; ++i) {
                     if (vertices_[i] == dst) {
 #ifdef EDGE_TIMESTAMPS
                         size_t src_idx = no_vertices_ - 1;

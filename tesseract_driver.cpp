@@ -98,7 +98,7 @@ int main(int argc, char** argv)  {
 ////        std::random_device rd;
 ////        std::mt19937_64 g(rd());
 //
-        std::random_shuffle(v.begin(), v.end());
+//        std::random_shuffle(v.begin(), v.end());
 //
 //
 //

@@ -15,6 +15,7 @@
 #include "canonic_checks.hpp"
 //#include "triangle_c.hpp"
 #include "cliques_ooc.hpp"
+#include "ksearch.h"
 #include "scala_algos.h"
 #include "motif_counting.hpp"
 #include "color_cliques.hpp"
@@ -117,17 +118,49 @@ class StaticExploreNonSym{
         ENDFOR
 
         for(VertexId n:neighbours){
-            if(embedding->contains(n) || !canonic_check_r2E_nonsym(n, embedding,step)) continue;
+            if(embedding->contains(n) )continue;
+            if( !canonic_check_r2E_nonsym(n, embedding)) continue;
             //TODO pattern_filter check - not needed for motifs but might be for other algorithm
             embedding->append(n);
-            const bool filter = algo.filter(embedding);
+            const bool filter = true;//algo.filter(embedding);
+
             if(filter){
-                if(algo.match(embedding)){
-                    algo.output(embedding,tid);
+                if(step < K -1)
+                    explore(embedding, step + 1 , tid, &neighbours);//, &bits_ign);//ignore);
+                else {
                     per_thread_data[tid]++;
+                    std::array<uint32_t,K> deg;
+                    int no_edg = 0;
+                    for(int i = 0; i < embedding->no_vertices(); i++){
+                        deg[i] = embedding->vertex_degree_at_index(i);
+                    }
+//        std::sort(deg, deg + K);
+
+
+                    std::sort(deg.begin(), deg.end());
+
+                    int pattern_id1 = 0;
+                    int i = 0;
+
+                    for(const auto &item: deg){
+
+                        pattern_id1 = pattern_id1 | (int)item;
+
+                        if(i == embedding->no_vertices() - 1 )break;
+                        i++;
+                        pattern_id1 = pattern_id1 << 2;
+                    }
+
+                    per_thread_patterns[tid][pattern_id1]++;
+
+
                 }
-                if(step < K-1)
-                    explore_nonSym(embedding, step + 1, tid, &neighbours);
+//                if(algo.match(embedding)){
+//                    algo.output(embedding,tid);
+//                    per_thread_data[tid]++;
+//                }
+//                if(step < K-1)
+//                    explore_nonSym(embedding, step + 1, tid, &neighbours);
             }
             embedding->pop();
         }
@@ -324,9 +357,9 @@ public:
                                 }
                             }
                             if (cont) continue;
-                            const bool filter = embedding->no_edges() ==
-                                                ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
-                                                2;
+                            const bool filter = algo.filter(embedding); //embedding->no_edges() ==
+                                                //((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
+                                                //2;
                             if(filter){
                                 per_thread_data[tid]++;
                             }
@@ -344,9 +377,9 @@ public:
             per_thread_post_cache_explore[tid]++;
 #endif
 
-            const bool filter =embedding->no_edges() ==
-                                ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
-                                2;
+            const bool filter =algo.filter(embedding);//embedding->no_edges() ==
+//                                ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
+//                                2;
             if (filter) {
                 if (step < K - 1) {
 
@@ -376,7 +409,7 @@ public:
                     }
                     per_thread_e_cache_buffer[i].clear();
                 }
-                fprintf(stderr, "Cache contains %lu entries!\n", e_cache->num_entries());
+//                fprintf(stderr, "Cache contains %lu entries!\n", e_cache->num_entries());
             }
     }
 };
@@ -389,63 +422,47 @@ public:
 
     DynamicExploreNonSym(int n_threads) :no_threads(n_threads)  {}
     inline void updateCaches(){}
-    void explore(Embedding<VertexId>* embedding, int step, const int tid,const  std::unordered_set<VertexId>* neigh=NULL){//}, const  std::unordered_set<VertexId>* bits_in=NULL){//const std::bitset<NB_BITS>*ign= NULL){//},  const std::unordered_set<VertexId>* ign=NULL){
+    void explore(Embedding<VertexId>* embedding, int step, const int tid,const  std::unordered_set<VertexId>* neigh){//}, const  std::unordered_set<VertexId>* bits_in=NULL){//const std::bitset<NB_BITS>*ign= NULL){//},  const std::unordered_set<VertexId>* ign=NULL){
         std::unordered_set<VertexId> neighbours(*neigh);
-//        std::unordered_set<uint32_t> ignore(*ign);
-//        std::bitset<NB_BITS>bits_ign(*ign);
-//        std::unordered_set<VertexId>bits_ign(*bits_in);
-
-
         VertexId dst;
         Timestamp ts;
         const VertexId v_id = embedding->last();
+        uint64_t e1 = (uint64_t) ((*embedding)[0]) << 32;
+        e1 = e1 | (uint64_t) ((*embedding)[1]);
         FOREACH_EDGE_TS(v_id, dst, ts)
-//            if (!algo.pattern_filter(embedding,dst))continue;
+            if (!algo.pattern_filter(embedding,dst))continue;
             if(!embedding->contains(dst) && ts <= embedding->max_ts()){
                 if(ts == embedding->max_ts() && dst < embedding->first()){
-//                    bits_ign.insert(dst);
-//                    ignore.insert(dst);
                     continue;
                 }
             }
-
+//
             if(ts == embedding->max_ts()){
-                uint64_t e1 = dst>v_id?v_id : dst;// (uint64_t)dst << 32;
-                e1 =(e1 << 32 ) |(dst >v_id? dst:v_id);
+                uint64_t e2 = dst>v_id?v_id : dst;
+                e2 =(e2 << 32 ) |(dst >v_id? dst:v_id);
 
-
-                uint64_t e2 = (uint64_t)((*embedding)[0]) << 32;
-                e2 = e2 | (uint64_t)((*embedding)[1]);
-                if(e1 < e2 ){
-//                    bits_ign.insert(dst);
-//                    ignore.insert(dst);
+                if(e2 < e1 ){
                     continue;
                 }
             }
             neighbours.insert(dst);
         ENDFOR
 
-        for(VertexId n: neighbours){
-//            if(bits_ign.find(n) != bits_ign.end()) continue;
-//            if(ignore.find(n) != ignore.end()) continue; // TODO this is can_expand in the paper
-            if(embedding->contains(n) || !canonic_check_r2_middle(n, embedding)) continue;
+        for(VertexId n: neighbours) {
+            if (embedding->contains(n)) continue;
+
+            if (!algo.pattern_filter(embedding, n)) continue;
             embedding->append(n);
+
             bool cont = false;
-            for(int k = 0; k < embedding->no_vertices() -1; k++){
-//                if((*embedding)[k] == v_id) continue;
-                if(embedding->edge_at_indices_is_new(embedding->no_vertices() -1,k)){
-//                    printf("Edge %u - %u is new\n", (*embedding)[k], dst);
 
-//                    uint64_t e1 = dst > v_id ? v_id : dst;// (uint64_t)dst << 32;
-//                    e1 = (e1 << 32) | (dst > v_id ? dst : v_id);
-
-                    uint64_t e1 = (uint64_t) ((*embedding)[0]) << 32;
-                    e1 = e1 | (uint64_t) ((*embedding)[1]);
+            for (int k = 0; k < embedding->no_vertices() - 1; k++) {
+                if (embedding->edge_at_indices_is_new(embedding->no_vertices() - 1, k)) {
 
                     uint64_t src1 = (uint64_t) ((*embedding)[k]);
-                    uint64_t e2 = (dst > src1? src1 : dst);
+                    uint64_t e2 = (n > src1 ? src1 : n);
                     e2 = (e2 << 32);
-                    e2 = e2 | (uint64_t) (dst > src1 ? dst : src1);
+                    e2 = e2 | (uint64_t) (n > src1 ? n : src1);
                     if (e2 < e1) {
                         embedding->pop();
                         cont = true;
@@ -453,71 +470,90 @@ public:
                     }
                 }
             }
-            if(cont) { continue;}
-            const bool filter = true;//algo.filter(embedding);
-            if(filter ){
-//                if(algo.match(embedding)) {
+            if (cont) continue;
+            if (!canonic_check_r2_middle(n, embedding)) {
+                embedding->pop();
+                continue;
+            }
+            const bool filter = algo.filter(embedding);
+            if (filter) {
+                if (algo.match(embedding)) {
+#ifdef DEBUG_PRINT
+                    for (int k = 0; k < embedding->no_vertices(); k++) {
+                        printf("%u(%u) ", (*embedding)[k], (*embedding)[k] % MOD_CHECK);
+                    }
+                    printf("\n");
+#endif
+//                    printf(")\n");
+
+                    per_thread_data[tid]++;
+
+                } else
+//                    if(embedding->no_vertices() < K)
+                     explore(embedding, step + 1, tid, &neighbours);//, &bits_ign);//ignore);
+//                else{
+////                if(algo.match(embedding)) {
 //                    algo.output(embedding, tid);
 //                    per_thread_data[tid]++;
-//                }
-                if(step < K -1)
-                    explore(embedding, step + 1 , tid, &neighbours);//, &bits_ign);//ignore);
-                else {
-                    per_thread_data[tid]++;
-                    std::array<uint32_t,K> deg;
-                    std::array<uint32_t,K> deg2;
+////                }
+//                /*if(step < K -1)
+//                    explore(embedding, step + 1 , tid, &neighbours);//, &bits_ign);//ignore);
+
+//                    std::array<uint32_t,K> deg;
+//                    std::array<uint32_t,K> deg2;
+//
+//
+//                    int no_edg = 0;
+//                    for(int i = 0; i < embedding->no_vertices(); i++){
+//                        deg[i] = embedding->vertex_degree_at_index(i);
+//#ifdef EDGE_TIMESTAMPS
+//                        deg2[i] = embedding->old_vertex_degree_at_index(i);
+//                        no_edg += embedding->old_vertex_degree_at_index(i);
+//#endif
+//                    }
+////        std::sort(deg, deg + K);
+//
+//
+//                    std::sort(deg.begin(), deg.end());
+//
+//                    int pattern_id1 = 0;
+//                    int i = 0;
+//
+//                    for(const auto &item: deg){
+//
+//                        pattern_id1 = pattern_id1 | (int)item;
+//
+//                        if(i == embedding->no_vertices() - 1 )break;
+//                        i++;
+//                        pattern_id1 = pattern_id1 << 2;
+//                    }
+//                    int pattern_id2= 0;
+//                    i = 0;
+//                    if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
+//                    else {
+//                        std::sort(deg2.begin(), deg2.end());
+//                        for (const auto &item: deg2) {
+//
+//                            if (item == 0) {
+//                                pattern_id2 = 0;
+//                                break;
+//                            }
+//                            pattern_id2 = pattern_id2 | (int) item;
+//
+//                            if (i == embedding->no_vertices() - 1)break;
+//                            i++;
+//                            pattern_id2 = pattern_id2 << 2;
+//                        }
+//                    }
+//                    per_thread_patterns[tid][pattern_id1]++;
+//
+//                    if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
+//                        per_thread_patterns[tid][pattern_id2]--;
+//                    }
 
 
-                    int no_edg = 0;
-                    for(int i = 0; i < embedding->no_vertices(); i++){
-                        deg[i] = embedding->vertex_degree_at_index(i);
-#ifdef EDGE_TIMESTAMPS
-                        deg2[i] = embedding->old_vertex_degree_at_index(i);
-                        no_edg += embedding->old_vertex_degree_at_index(i);
-#endif
-                    }
-//        std::sort(deg, deg + K);
+            }
 
-
-                    std::sort(deg.begin(), deg.end());
-
-                    int pattern_id1 = 0;
-                    int i = 0;
-
-                    for(const auto &item: deg){
-
-                        pattern_id1 = pattern_id1 | (int)item;
-
-                        if(i == embedding->no_vertices() - 1 )break;
-                        i++;
-                        pattern_id1 = pattern_id1 << 2;
-                    }
-                    int pattern_id2= 0;
-                    i = 0;
-                    if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
-                    else {
-                        std::sort(deg2.begin(), deg2.end());
-                        for (const auto &item: deg2) {
-
-                            if (item == 0) {
-                                pattern_id2 = 0;
-                                break;
-                            }
-                            pattern_id2 = pattern_id2 | (int) item;
-
-                            if (i == embedding->no_vertices() - 1)break;
-                            i++;
-                            pattern_id2 = pattern_id2 << 2;
-                        }
-                    }
-                    per_thread_patterns[tid][pattern_id1]++;
-
-                    if (pattern_id2 != 0 && pattern_id2 != pattern_id1) {
-                        per_thread_patterns[tid][pattern_id2]--;
-                    }
-
-                }
-                }
 
                 embedding->pop();
             }
@@ -698,12 +734,18 @@ class DynamicEngineDriver: public EngineDriver {
     void compute(void*c){
         int tid = (long) c;
         begin:
-
+        std::unordered_set<VertexId > neighbours;
         wait_b(&xsync_begin);
-//        std::unordered_set<VertexId>ign;
         Embedding<uint32_t> embedding;
-//         std::bitset<NB_BITS>ign (0);
-//         std::unordered_set<VertexId> ign;
+
+//        for(uint32_t i = 0; i < no_active;i++){
+//
+//            uint32_t src = uBuf->updates[i].src;
+//            if(src % no_threads != tid) continue;
+//            algo.pattern_update(src, tid, no_threads);
+//        }
+//
+//    wait_b(&xsync_end);
 
         while(curr_item < no_active){
             get_work(tid, &thread_work[tid], no_active);
@@ -714,11 +756,20 @@ class DynamicEngineDriver: public EngineDriver {
                 src = uBuf->updates[thread_work[tid].start].src;
                 dst = uBuf->updates[thread_work[tid].start].dst;
 //                printf("Adding %u - %u\n",src,dst);
-                if(degree[src] < K -1 || degree[dst] < K - 1)continue;
+//                if(degree[src] < K -1 || degree[dst] < K - 1)continue;
+
+                if(!algo.pattern_filter(&embedding,src)) { continue;}
                 embedding.append(src);
+
+                if(!algo.pattern_filter(&embedding,dst)) {
+
+                    embedding.pop();
+                    continue;
+                }
                 embedding.append(dst);
+
 //                embedding.set_max_ts(uBuf->curr_ts);
-                std::unordered_set<VertexId > neighbours;
+
                     VertexId d;
                     Timestamp ts;
 
@@ -826,6 +877,8 @@ public:
             algo.output_final();
 
             exploreEngine->updateCaches();
+
+
 
             wait_b(&uBuf->updates_consumed);
         }

@@ -75,20 +75,20 @@ void init(const Configuration *configuration) {
 //            }
 //            break;
 //        }
-        case 0:
-        {
-            printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
-            if(do_updates){
-//                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
-//                do_updates = false;
-//                e_tmp->execute_app();
-//                do_updates = true;
-                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
-            }
-            else
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
-            break;
-        }
+//        case 0:
+//        {
+//            printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
+//            if(do_updates){
+////                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
+////                do_updates = false;
+////                e_tmp->execute_app();
+////                do_updates = true;
+//                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
+//            }
+//            else
+//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
+//            break;
+//        }
 //        case 1:
 //        {
 //            printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
@@ -116,6 +116,16 @@ void init(const Configuration *configuration) {
 //                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
 //            break;
 //        }
+        case 3:
+        {
+            printf("[INFO] Running %d-Keyword search with %d threads\n",K, configuration->no_threads);
+            if(do_updates){
+                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, KSearchE>,KSearchE,UpdateBuffer>(configuration->no_threads,false, updateBuf);
+            }
+            else
+                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,KSearchE>,KSearchE>(configuration->no_threads,false);
+            break;
+        }
         default: {
             printf("You need to have a valie algo id! \n");
             exit(1);

@@ -69,19 +69,53 @@ inline bool canonic_check_r2E_sym(const uint32_t v,const Embedding<uint32_t>* em
   bool foundNeighbour = false;
     for(; i < embedding->no_vertices(); ++i) {
       const uint32_t u = (*embedding)[i];
-    if (!foundNeighbour && has_edge_sym(u,v)) foundNeighbour = true;
+      if(!foundNeighbour){
+          uint32_t dst;
+          if(degree[u] < degree[v]){
+              FOREACH_EDGE(u,dst)
+              if(dst == v) {
+                  foundNeighbour = true; break;
+              }
+              ENDFOR
+          }
+          else{
+              FOREACH_EDGE(v,dst)
+                  if(dst == u) {
+                      foundNeighbour = true; break;
+                  }
+              ENDFOR
+          }
+      }
+//    if (!foundNeighbour && has_edge_sym(u,v)) foundNeighbour = true;
     else
     if(foundNeighbour && u > v) return false;
   }
   return true;
 
 }
-inline bool canonic_check_r2E_nonsym(const uint32_t v,const Embedding<uint32_t>* embedding, const uint32_t step)  {
+inline bool canonic_check_r2E_nonsym(const uint32_t v, const Embedding<uint32_t> *embedding) {
     uint32_t i = 0;
     bool foundNeighbour = false;
     for(; i < embedding->no_vertices(); ++i) {
         const uint32_t u = (*embedding)[i];
-        if (!foundNeighbour && has_edge(u,v)) foundNeighbour = true;
+        if(!foundNeighbour){
+            uint32_t dst;
+            if(degree[u] < degree[v]){
+                FOREACH_EDGE(u,dst)
+                    if(dst == v) {
+                        foundNeighbour = true; break;
+                    }
+                ENDFOR
+            }
+            else{
+                FOREACH_EDGE(v,dst)
+                    if(dst == u) {
+                        foundNeighbour = true; break;
+                    }
+                ENDFOR
+            }
+        }
+//        if (!foundNeighbour && has_edge(u,v)) foundNeighbour = true;
         else
         if(foundNeighbour && u > v) return false;
     }

@@ -109,7 +109,7 @@ public:
     }
 
     inline bool pattern_filter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
-        return embedding->no_vertices() < K;// true;
+        return true;//embedding->no_vertices() <= K;// true;
     }
     void init() {
         no_active = 0;
