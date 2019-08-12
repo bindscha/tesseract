@@ -7,6 +7,7 @@
 
 #define NO_WORDS 3
 #define MOD_CHECK (NO_WORDS + 5)
+#define MAX_HOPS 2
 //Keyword search filter functions
 class KSearchE {//}; public  Algorithm<Embedding<uint32_t>> {
     size_t no_cliques = 0;
@@ -116,7 +117,7 @@ public:
             if(found_labs == NO_WORDS)break;
         ENDFOR
 
-        while(found_labs < NO_WORDS && hops < 1 ){
+        while(found_labs < NO_WORDS && hops < MAX_HOPS ){
             hops++;
             uint32_t dst;
             FOREACH_EDGE(v_id, dst)
