@@ -25,7 +25,7 @@
 #include <unordered_set>
 #include <thread>
 #include <mutex>
-#include"Bitmap.h"
+//#include"Bitmap.h"
 
 uint64_t CHUNK_SIZE= 2;
 struct thread_work_t{
@@ -175,7 +175,7 @@ class DynamicExploreSymmetric{
 public:
     DynamicExploreSymmetric(int n_threads)  {
         no_threads = n_threads;
-        e_cache_enabled = true;
+        e_cache_enabled = false;
 
         if(e_cache_enabled) {
             e_cache = new EmbeddingsCache<uint32_t>(NB_NODES, DEFAULT_CACHE_SIZE);
@@ -344,7 +344,7 @@ public:
             per_thread_post_cache_explore[tid]++;
 #endif
 
-            const bool filter = embedding->no_edges() ==
+            const bool filter =embedding->no_edges() ==
                                 ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
                                 2;
             if (filter) {
@@ -713,9 +713,11 @@ class DynamicEngineDriver: public EngineDriver {
                 VertexId  src,dst;
                 src = uBuf->updates[thread_work[tid].start].src;
                 dst = uBuf->updates[thread_work[tid].start].dst;
+//                printf("Adding %u - %u\n",src,dst);
                 if(degree[src] < K -1 || degree[dst] < K - 1)continue;
                 embedding.append(src);
                 embedding.append(dst);
+//                embedding.set_max_ts(uBuf->curr_ts);
                 std::unordered_set<VertexId > neighbours;
                     VertexId d;
                     Timestamp ts;

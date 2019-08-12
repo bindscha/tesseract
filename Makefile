@@ -6,7 +6,7 @@ endif
 
 all:tesseract libtesseract# motif_counting  k-clique #triangle_count#clique_ooc_dfs motif_counting triangle_count triangle_dfs
 #motif_counting_bfs motif_counting clique_ooc_dfs clique_ooc triangle_dfs k-clique
-INCLUDES=utils.cpp graph.cpp
+INCLUDES=graph.cpp
 FLAGS=g++ -D_FILE_OFFSET_BITS=64  -D_FILE_OFFSET_BITS=64 -fcilkplus -lcilkrts -DCILK -pthread -fms-extensions -ggdb3 -std=c++11 -pthread -fopenmp -U_FORTIFY_SOURCE -O3 -fno-stack-protector
 #triangle_counting tc_ooc tc_ooc_pthread clique_ooc clique_ooc_dfs triangle_dfs
 

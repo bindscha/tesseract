@@ -214,6 +214,7 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
     if(true){//h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+//        updateBuf->curr_ts = ts;
         updateBuf->incNoUpdates();
     }
     //printf("Received new edge %u->%u (ts=%u)\n", src, dst, ts);

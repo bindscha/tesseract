@@ -225,22 +225,27 @@ public:
         return vertices_[idx];
     }
 
+    inline void set_max_ts(Timestamp ts){
+        max_ts_ = ts;
+    }
     inline void append(V vertex) {
 //        _append(vertex);
         vertices_[no_vertices_++] = vertex;
+//        if(no_vertices() > 1) max_ts_ = ts;
         if(no_vertices_ > 1) {
             V dst;
+            int found = 0;
 #ifdef EDGE_TIMESTAMPS
             Timestamp ts;
-            FOREACH_EDGE_TS(vertices_[no_vertices_-1], dst, ts)
+            FOREACH_EDGE_TS(vertices_[no_vertices_ - 1], dst, ts)
 
 #else
                 FOREACH_EDGE(vertices_[no_vertices_-1], dst)
 #endif
-                for(size_t i = 0; i < no_vertices_; ++i) {
+                for (size_t i = 0; i < no_vertices_; ++i) {
                     if (vertices_[i] == dst) {
 #ifdef EDGE_TIMESTAMPS
-                        size_t src_idx = no_vertices_-1;
+                        size_t src_idx = no_vertices_ - 1;
                         size_t dst_idx = i;
                         if (src_idx == 0 && dst_idx == 1 || src_idx == 1 && dst_idx == 0) {
                             max_ts_ = ts;
@@ -248,23 +253,27 @@ public:
                         if (src_idx > dst_idx) {
                             edges_ |= _edge_bit(src_idx, dst_idx);
                             if (ts == max_ts_) {
-                                timestamps_ |= ( 1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
+                                timestamps_ |= (1 << (T_N[src_idx] + dst_idx));//_edge_bit(src_idx, dst_idx);
                             }
                         } else if (src_idx < dst_idx) {
                             edges_ |= _edge_bit(dst_idx, src_idx);
                             if (ts == max_ts_) {
-                                timestamps_ |= ( 1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
+                                timestamps_ |= (1 << (T_N[dst_idx] + src_idx));//_edge_bit(dst_idx, src_idx);
                             }
                         }
 //                    _connect(no_vertices_-1, i, ts);
 #else
                         _connect(no_vertices_-1, i);
 #endif
+                        found++;
                         break;
                     }
                 }
+                if (found == no_vertices_ - 1) break;
             ENDFOR
         }
+
+
 //        _add_edges();
     }
 
@@ -290,7 +299,7 @@ public:
     }
 #endif
 
-    inline const V first() {
+    inline const V first() const{
         if (no_vertices_ > 0) {
             return vertices_[0];
         } else {
@@ -298,7 +307,7 @@ public:
         }
     }
 
-    inline const V last(){
+    inline const V last() const{
         if (no_vertices_ > 0) {
             return vertices_[no_vertices_ - 1];
         } else {
