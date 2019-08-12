@@ -63,7 +63,7 @@ class StaticExploreSymmetric{
         VertexId v_id = embedding->last();
         VertexId dst;
         FOREACH_EDGE_FWD(v_id, dst)
-            if(algo.pattern_filter(embedding,dst)) continue;
+            if(!algo.pattern_filter(embedding,dst)) continue;
             embedding->append(dst);
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
             const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2; algo.filter(embedding);
