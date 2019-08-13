@@ -27,7 +27,7 @@
 #include <thread>
 #include <mutex>
 //#include"Bitmap.h"
-
+//#define DEBUG_PRINT
 uint64_t CHUNK_SIZE= 2;
 struct thread_work_t{
     uint32_t start;
@@ -94,7 +94,9 @@ class StaticExploreSymmetric{
     }
 public:
     StaticExploreSymmetric(){ }
-
+    void setAlgo(A* a){
+        algo = *a;
+    }
     void explore(Embedding<T> *embedding, int step, const int tid, const std::unordered_set<VertexId> *neigh,
                  const std::unordered_set<VertexId> *ign)  {
         explore_sym(embedding,step,tid);
@@ -168,6 +170,9 @@ class StaticExploreNonSym{
 
 public:
     StaticExploreNonSym() {}
+    void setAlgo(A* a){
+        algo = *a;
+    }
     void explore(Embedding<T> *embedding, int step,const int tid, const std::unordered_set<VertexId>* neigh=NULL, const std::unordered_set<VertexId>* ign=NULL){
         explore_nonSym(embedding,step, tid, neigh);
     }
@@ -217,6 +222,9 @@ public:
                 per_thread_e_cache_buffer[i].reserve(151880496);//151880496
             }
         }
+    }
+    void setAlgo(A* a){
+        algo = *a;
     }
     ~DynamicExploreSymmetric(){
         if (e_cache != NULL) {
@@ -419,7 +427,9 @@ class DynamicExploreNonSym {
     A algo;
     int no_threads; //TODO not used
 public:
-
+    void setAlgo(A* a){
+        algo = *a;
+    }
     DynamicExploreNonSym(int n_threads) :no_threads(n_threads)  {}
     inline void updateCaches(){}
     void explore(Embedding<VertexId>* embedding, int step, const int tid,const  std::unordered_set<VertexId>* neigh){//}, const  std::unordered_set<VertexId>* bits_in=NULL){//const std::bitset<NB_BITS>*ign= NULL){//},  const std::unordered_set<VertexId>* ign=NULL){
@@ -430,12 +440,16 @@ public:
         uint64_t e1 = (uint64_t) ((*embedding)[0]) << 32;
         e1 = e1 | (uint64_t) ((*embedding)[1]);
         FOREACH_EDGE_TS(v_id, dst, ts)
-            if (!algo.pattern_filter(embedding,dst))continue;
-            if(!embedding->contains(dst) && ts <= embedding->max_ts()){
+//        printf("Exploring %u from %u\n", dst,v_id);
+            if(embedding->contains(dst))continue;
+
                 if(ts == embedding->max_ts() && dst < embedding->first()){
                     continue;
                 }
-            }
+
+
+            if (!algo.pattern_filter(embedding,dst))continue;
+
 //
             if(ts == embedding->max_ts()){
                 uint64_t e2 = dst>v_id?v_id : dst;
@@ -471,16 +485,19 @@ public:
                 }
             }
             if (cont) continue;
+
             if (!canonic_check_r2_middle(n, embedding)) {
                 embedding->pop();
                 continue;
             }
+//            printf("Checking now %u\n",n);
             const bool filter = algo.filter(embedding);
+
             if (filter) {
                 if (algo.match(embedding)) {
 #ifdef DEBUG_PRINT
                     for (int k = 0; k < embedding->no_vertices(); k++) {
-                        printf("%u(%u) ", (*embedding)[k], (*embedding)[k] % MOD_CHECK);
+                        printf("%u(%u) ", (*embedding)[k], (*embedding)[k] & MOD_CHECK);
                     }
                     printf("\n");
 #endif
@@ -665,6 +682,9 @@ public:
     inline int getWid(){
         return w_id;
     }
+    void setAlgo(A* a){
+        algo = *a;
+    }
     StaticEngineDriver(int nb_threads, bool symm, int wid=0, int noWorker =1):no_threads(nb_threads){
         symmetric = symm;
         exploreEngine=  new E();
@@ -695,6 +715,7 @@ public:
 
     void execute_app(){
         algo.init();
+        exploreEngine->setAlgo(&algo);
         printf("[STAT] Number of active items: %lu\n",no_active);
 
         for (int i = 0; i < no_threads - 1; i++) {
@@ -740,13 +761,22 @@ class DynamicEngineDriver: public EngineDriver {
 
 //        for(uint32_t i = 0; i < no_active;i++){
 //
+//
 //            uint32_t src = uBuf->updates[i].src;
-//            if(src % no_threads != tid) continue;
-//            algo.pattern_update(src, tid, no_threads);
+//            uint32_t dst = uBuf->updates[i].dst;
+////            if(tid == 0)
+////                printf("Adding %u - %u\n",src,dst);
+//            if(!algo.getTS(src, uBuf->curr_ts))
+//                if(src % no_threads == tid )
+//                    algo.pattern_update(src, uBuf->curr_ts);
+//            if(algo.getTS(dst, uBuf->curr_ts)) continue;
+//            if(dst % no_threads != tid) continue;
+//
+//            algo.pattern_update(dst, uBuf->curr_ts  );
 //        }
 //
 //    wait_b(&xsync_end);
-
+//        if(tid == 0 ) algo.printMap();
         while(curr_item < no_active){
             get_work(tid, &thread_work[tid], no_active);
             if(thread_work[tid].start == thread_work[tid].stop) goto end;
@@ -755,7 +785,7 @@ class DynamicEngineDriver: public EngineDriver {
                 VertexId  src,dst;
                 src = uBuf->updates[thread_work[tid].start].src;
                 dst = uBuf->updates[thread_work[tid].start].dst;
-//                printf("Adding %u - %u\n",src,dst);
+
 //                if(degree[src] < K -1 || degree[dst] < K - 1)continue;
 
                 if(!algo.pattern_filter(&embedding,src)) { continue;}
@@ -835,9 +865,12 @@ public:
         do_run = false;
     }
     void execute_app(){
+        algo.init();
+        exploreEngine->setAlgo(&algo);
         for (int i = 0; i < no_threads - 1; i++) {
             this->threads[i] = new std::thread(&DynamicEngineDriver::compute, this, (void *) (i + 1));
         }
+
         printf("[INFO] Running in symmetric mode %d \n", symmetric);
         curr_item = 0;
         uint64_t cand = 0;
