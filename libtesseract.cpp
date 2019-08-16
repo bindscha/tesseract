@@ -102,8 +102,8 @@ void init(const Configuration *configuration) {
 //                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
 //                        configuration->no_threads, false, updateBuf);
 //            }
-//           else
-//               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
+////           else
+////               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
 //            break;
 //        }
 //        case 2:
@@ -112,8 +112,8 @@ void init(const Configuration *configuration) {
 //            if(do_updates){
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
 //            }
-//            else
-//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
+////            else
+////                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
 //            break;
 //        }
         case 3:
@@ -122,8 +122,8 @@ void init(const Configuration *configuration) {
             if(do_updates){
                 e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, KSearchE>,KSearchE,UpdateBuffer>(configuration->no_threads,false, updateBuf);
             }
-            else
-                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,KSearchE>,KSearchE>(configuration->no_threads,false);
+//            else
+//                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,KSearchE>,KSearchE>(configuration->no_threads,false);
             break;
         }
         default: {
@@ -212,12 +212,12 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
     edges[adj_offsets[src] + degree[src]].ts = ts;
 
     degree[src]++;
-
+    assert(degree[src]>=0);
     edges[adj_offsets[dst] + degree[dst]].src = dst;
     edges[adj_offsets[dst] + degree[dst]].dst = src;
     edges[adj_offsets[dst] + degree[dst]].ts = ts;
     degree[dst]++;
-
+    assert(degree[dst]>=0);
     uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
 //        if((true)){//
 

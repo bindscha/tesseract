@@ -125,7 +125,7 @@ public:
       size_t stop = start + num;
       if(tid == no_threads - 1) stop =  initial_chunk;
         size_t total_looped = 0;
-      for(;start < stop && total_looped  < NB_EDGES;total_looped++){
+      for(;start < stop && total_looped  < NB_EDGES - 10000000;total_looped++){
 
         if(e[total_looped].src >e[total_looped].dst){//->at(total_looped)].dst) {
             continue;
@@ -137,7 +137,11 @@ public:
         uint32_t dst = e[total_looped].dst;//->at(total_looped)].dst;
 
         assert(degree[src]>= 0);
-        assert(degree[0] <= (15402+ 975418));
+//        if(degree[src] >15402+ 975418){
+//            printf("Problemd with node %u - degree is %lu\n",src,degree[src]);
+//        }
+//        assert(degree[src] <= (15402+ 975418));
+
 
         size_t deg = degree[src];//__sync_fetch_and_add(&degree[src],1);
           degree[src]++;
@@ -147,7 +151,11 @@ public:
           assert(degree[dst]>= 0);
         deg = degree[dst]; //__sync_fetch_and_add(&degree[dst],1);
         degree[dst]++;
-          assert(degree[0] <= (15402+ 975418));
+//          if(degree[dst] >15402+ 975418){
+//              printf("Problemd with node %u - degree is %lu\n",dst,degree[dst]);
+//          }
+//          assert(degree[dst] <= (15402+ 975418));
+//          assert(degree[0] <= (15402+ 975418));
         graph_edges[adj_offsets[dst] + deg].src = dst;
         graph_edges[adj_offsets[dst] + deg].dst = src;
         graph_edges[adj_offsets[dst] + deg].ts = 0;

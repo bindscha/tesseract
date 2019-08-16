@@ -5,8 +5,8 @@
 #ifndef TESSERACT_KSEARCH_H
 #define TESSERACT_KSEARCH_H
 //#define DEBUG_PRINT
-#define NO_WORDS 3
-#define MOD_CHECK 0x1F//(NO_WORDS + 5)
+#define NO_WORDS 3  
+#define MOD_CHECK 0x1F //(NO_WORDS + 5)
 #define MAX_HOPS 2
 //Keyword search filter functions
 class KSearchE {//}; public  Algorithm<Embedding<uint32_t>> {
@@ -16,6 +16,7 @@ class KSearchE {//}; public  Algorithm<Embedding<uint32_t>> {
 
     uint32_t** vertex_dist;
 public:
+
 
     inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand ) const  {
 
@@ -31,7 +32,7 @@ public:
 
         for (int i = 0; i < embedding->no_vertices(); i++) {
             uint32_t c_id = (*embedding)[i] & MOD_CHECK ;//< NO_WORDS;
-            if (c_id < NO_WORDS) {
+            if (c_id < NO_WORDS ) {
                 if (cand_col < NO_WORDS && cand_col == c_id) {
 //                    printf("Not adding %u because it has the same label  (%u) as  %u (%u)\n",cand,cand_col,(*embedding)[i],c_id);
                     return false;
@@ -40,9 +41,11 @@ public:
                 col_found[c_id]++;
 
             }
+
+
         }
 
-        return true;
+//        return true;
         if(cand_col < NO_WORDS) {
 //            printf("Accepting*** %u\n",cand);
             return true;

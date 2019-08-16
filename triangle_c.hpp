@@ -34,7 +34,7 @@ public:
         uint32_t dst,ts;
 
         FOREACH_EDGE_TS(embedding->last(),dst,ts)
-//                if(ts <=set->ts_max)
+//                if(ts <=set->ts_max)  
          if( ts <= embedding->max_ts())
                  if(dst ==  embedding->first() ) return true;
         ENDFOR
