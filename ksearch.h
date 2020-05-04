@@ -5,7 +5,7 @@
 #ifndef TESSERACT_KSEARCH_H
 #define TESSERACT_KSEARCH_H
 //#define DEBUG_PRINT
-#define NO_WORDS 3  
+#define NO_WORDS 3
 #define MOD_CHECK 0x1F //(NO_WORDS + 5)
 #define MAX_HOPS 2
 //Keyword search filter functions
@@ -88,13 +88,85 @@ public:
         return true;
     }
 
+    inline bool tmp_pfilter(const Embedding<uint32_t>* embedding, const uint32_t cand){
+
+        uint32_t col_found[NO_WORDS];
+        uint32_t cand_col = cand & MOD_CHECK;
+//        printf("Cand %u label is %u\n",cand, cand_col);
+        if(embedding->no_vertices() == 0 )
+            return cand_col < NO_WORDS;
+
+        for(int i = 0; i < NO_WORDS;i++)
+            col_found[i] =0;
+
+        for (int i = 0; i < embedding->no_vertices(); i++) {
+            uint32_t c_id = (*embedding)[i] & MOD_CHECK ;//< NO_WORDS;
+            if (c_id < NO_WORDS ) {
+                if (cand_col < NO_WORDS && cand_col == c_id) {
+//                    printf("Not adding %u because it has the same label  (%u) as  %u (%u)\n",cand,cand_col,(*embedding)[i],c_id);
+                    return false;
+                }
+                assert(c_id < NO_WORDS);
+                col_found[c_id]++;
+
+            }
+
+
+        }
+        return true;
+
+    }
     inline  bool filter( const Embedding<uint32_t>* embedding) const  {
+
+//        uint32_t col_found[NO_WORDS];
+//        uint32_t cand = embedding->last();
+//        uint32_t cand_col = cand & MOD_CHECK;
+////        printf("Cand %u label is %u\n",cand, cand_col);
+//
+//        if(embedding->no_vertices() - 1 == 0 )
+//            return cand_col < NO_WORDS;
+//
+//        for(int i = 0; i < NO_WORDS;i++)
+//            col_found[i] =0;
+//
+//        for (int i = 0; i < embedding->no_vertices() - 1; i++) {
+//            uint32_t c_id = (*embedding)[i] & MOD_CHECK ;//< NO_WORDS;
+//            if (c_id < NO_WORDS ) {
+//                if (cand_col < NO_WORDS && cand_col == c_id) {
+//                    return false;
+//                }
+//                assert(c_id < NO_WORDS);
+//                col_found[c_id]++;
+//
+//            }
+//
+//
+//        }
+//
+//        int not_far;
+//        for(int i = 0; i < NO_WORDS;i++){
+//            if(col_found[i] == 0) {
+//                if (vertex_dist[cand][i] <= K - embedding->no_vertices() - 1 && vertex_dist[cand][i] <= MAX_HOPS){
+//                    not_far++;
+//                    break;
+//                }
+//            }
+//        }
+//        if(not_far  == 0 ) return false;
+
         if(embedding->no_vertices() < K){
             return true;
         }
         else if(embedding->no_vertices() == K){
+
             int cols = 0;
             for (int i = 0; i < embedding->no_vertices(); i++) {
+
+
+
+//        printf("Cand %u label is %u\n",cand, cand_col);
+
+
                 if (((*embedding)[i] & MOD_CHECK) < NO_WORDS)
                     cols++;
                 if (cols == NO_WORDS) {

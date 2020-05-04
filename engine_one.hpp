@@ -29,6 +29,7 @@
 //#include"Bitmap.h"
 //#define DEBUG_PRINT
 #define PFILTER 1
+size_t* no_filter_count;
 //#define MOTIF 1
 uint64_t CHUNK_SIZE= 2;
 //#define PREFILTER
@@ -39,7 +40,9 @@ struct thread_work_t{
 size_t* per_thread_data;
 size_t* per_thread_cache_hit;
 size_t* per_thread_post_cache_explore;
-
+double time_canonic_check = 0;
+double time_prefilter = 0;
+double time_filter = 0;
 
 size_t curr_item = 0;
 // const size_t NB_BITS = 4847571;//100000;//61578414;//105896554;
@@ -63,6 +66,8 @@ template <typename T,typename A>
 class StaticExploreSymmetric{
     A algo;
 
+    //sjjs
+
     inline void explore_sym(Embedding<T> *embedding,const int step,const int tid){
         VertexId v_id = embedding->last();
         VertexId dst;
@@ -70,7 +75,8 @@ class StaticExploreSymmetric{
             if(!algo.pattern_filter(embedding,dst)) continue;
             embedding->append(dst);
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
-            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2; algo.filter(embedding);
+            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
+//            algo.filter(embedding);
             if(filter) {
                 if(step < K -1 ){
                     explore_sym(embedding, step + 1, tid);
@@ -247,16 +253,35 @@ public:
         e1 = e1 | (uint64_t) ((*embedding)[1]);
 
         FOREACH_EDGE_TS(v_id, dst, ts)
-
+            no_filter_count[tid]++;
+//            no_filter_count[tid]++;
             bool skip = false;
-            if (!algo.pattern_filter(embedding, dst)) {
+
 #ifdef PFILTER
-                continue;
-#else
-                skip = true;
+#ifdef COUNT_TIME
+            auto start2 = std::chrono::high_resolution_clock::now();
 #endif
+            if (!algo.pattern_filter(embedding, dst)) {
+
+#ifdef COUNT_TIME
+                auto end2 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = end2 - start2;
+                time_prefilter += diff.count();
+#endif
+                continue;
+
+                skip = true;
+
 
             }
+#ifdef COUNT_TIME
+            auto end2 = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> diff = end2 - start2;
+            time_prefilter += diff.count();
+#endif
+#endif
+//
+
             if (step >= 3 && dst < v_id) {continue;}
 
             if (ts == embedding->max_ts() && dst < embedding->first()) { continue;}
@@ -284,12 +309,23 @@ public:
                 }
             }
             if (cont) continue;
-
+#ifdef COUNT_TIME
+           start2 = std::chrono::high_resolution_clock::now();
+#endif
             if ( step < 3 && !canonic_check_r2_middle(dst, embedding)) {
+#ifdef COUNT_TIME
+                auto end2 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = end2 - start2;
+                time_canonic_check += diff.count();
+#endif
                 embedding->pop();
                 continue;
             }
-
+#ifdef COUNT_TIME
+             end2 = std::chrono::high_resolution_clock::now();
+           diff = end2 - start2;
+            time_canonic_check += diff.count();
+#endif
             bool hit = false;
             bool need_to_expl = false;
             std::unordered_set<uint32_t> skip_neigh;
@@ -315,7 +351,7 @@ public:
                             cached_embedding.append(third);
 
                             const bool filter = algo.filter(&cached_embedding);
-#ifdef PFILTER
+#if 1
                             if (filter) {
                                 per_thread_data[tid]++;
 #else
@@ -329,6 +365,7 @@ public:
                                 per_thread_cache_hit[tid]++;
 #endif
                                 hit = true;
+
 //                                printf("%u ",cached_embedding.no_vertices());
                                 for (int k = 0; k < cached_embedding.no_vertices(); k++) {
 
@@ -355,14 +392,13 @@ public:
                     Timestamp n_ts;
                     FOREACH_EDGE_TS_FWD(dst,n_dst, n_ts)
                         bool skip2 = false;
-                        if (!algo.pattern_filter(embedding, n_dst)) {
 #ifdef PFILTER
-                            continue;
-#else
-                            skip =true;
-#endif
-                        }
+                        if (!algo.pattern_filter(embedding, n_dst)) {
 
+                            continue;
+
+                        }
+#endif
                         if (n_ts == embedding->max_ts() && n_dst < embedding->first()) { continue;}
 
                         if (n_ts > embedding->max_ts() || embedding->contains(n_dst) )continue;
@@ -403,7 +439,7 @@ public:
 //                        filter = pf;
 //                        embedding->append(dst);
 //#endif
-#ifdef PFILTER
+#if 1 // PFILTER
                             if(filter)
                                 per_thread_data[tid]++;
 
@@ -429,19 +465,43 @@ public:
 #endif
 
 //            const bool filter =algo.filter(embedding);//
-            const bool filter = embedding->no_edges() ==
+//            const bool filter = embedding->no_edges() ==
+//                                ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
+//                                2;
+//            bool prefilter = true;
+//#//ifndef PFILTER
+//            embedding->pop();
+//            prefilter = algo.pattern_filter(embedding, dst);
+//            embedding->append(dst);
+////#endif
+#ifdef COUNT_TIME
+
+            start2 = std::chrono::high_resolution_clock::now();
+#endif
+            const bool filter =  (embedding->no_edges() ==
                                 ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
-                                2;
+                                2 );
+
+//             if(filter){
+//                filter = prefilter;
+//
+//            }
+
 //#ifndef PATTERN_FILTER
 //            embedding->pop();
 //            const bool pf = algo.pattern_filter(embedding,dst);
 //            filter = pf;
 //            embedding->append(dst);
 //#endif
-#ifdef PFILTER
+
+
+
             if (filter)  {
-#else
-                if(filter && !skip){
+#ifdef COUNT_TIME
+
+                auto end2 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = end2 - start2;
+                time_filter += diff.count();
 #endif
 
                 if (step < K - 1) {
@@ -455,6 +515,14 @@ public:
 
                 }
             }
+#ifdef COUNT_TIME
+            else {
+
+                end2 = std::chrono::high_resolution_clock::now();
+                diff = end2 - start2;
+                time_filter += diff.count();
+            }
+#endif
             embedding->pop();
         ENDFOR
 
@@ -501,10 +569,10 @@ public:
                 if(ts == embedding->max_ts() && dst < embedding->first()){
                     continue;
                 }
-
-
+//            no_filter_count[tid]++;
+#ifdef PFILTER
             if (!algo.pattern_filter(embedding,dst))continue;
-
+#endif
 //
             if(ts == embedding->max_ts()){
                 uint64_t e2 = dst>v_id?v_id : dst;
@@ -519,8 +587,11 @@ public:
 
         for(VertexId n: neighbours) {
             if (embedding->contains(n)) continue;
-
+#ifdef PFILTER
             if (!algo.pattern_filter(embedding, n)) continue;
+#endif
+
+
             embedding->append(n);
 
             bool cont = false;
@@ -611,7 +682,8 @@ public:
 #else
 
             if (filter) {
-                if (algo.match(embedding)) {
+
+            if (algo.match(embedding)) {
 #ifdef DEBUG_PRINT
                     for (int k = 0; k < embedding->no_vertices(); k++) {
                         printf("%u(%u) ", (*embedding)[k], (*embedding)[k] & MOD_CHECK);
@@ -686,6 +758,7 @@ class StaticEngineDriver: public EngineDriver{
         begin:
         wait_b(&xsync_begin);
         size_t prev_upd = 0;
+
         auto start = std::chrono::high_resolution_clock::now();
 
         Embedding<VertexId> embedding;
@@ -701,14 +774,40 @@ class StaticEngineDriver: public EngineDriver{
                 dst = edges[active[thread_work[tid].start]].dst;
 
                 if (dst < src) continue;
+#ifdef COUNT_TIME
+                auto start2 = std::chrono::high_resolution_clock::now();
+#endif
+//                std::cout << "[TIME] Batch process time: " << diff.count() << " seconds\n";
+                if(!algo.pattern_filter(&embedding,src))  {
+#ifdef COUNT_TIME
 
-                if(!algo.pattern_filter(&embedding,src)) continue;
+                    auto end2 = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> diff = end2 - start2;
+                    time_prefilter += diff.count();
+#endif
+                    continue;
+            }
+#ifdef COUNT_TIME
+                auto end2 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = end2 - start2;
+                time_prefilter += diff.count();
+#endif
                 embedding.append(src);
+#ifdef COUNT_TIME
+                start2 = std::chrono::high_resolution_clock::now();
+#endif
                 if( !algo.pattern_filter(&embedding,dst)) {
+#ifdef COUNT_TIME
+                     end2 = std::chrono::high_resolution_clock::now();
+                     diff = end2 - start2;
+                    time_prefilter += diff.count();
+#endif
                     embedding.pop();
                     continue;
                 }
-
+//                 end2 = std::chrono::high_resolution_clock::now();
+//                 diff = end2 - start2;
+//                time_prefilter += diff.count();
                 std::unordered_set <VertexId> neighbours; //I tried to make this a f() but too much overhead
                 if(!symmetric) {
                     neighbours.clear();
@@ -799,7 +898,14 @@ public:
             per_thread_data[i] = 0;
         }
         algo.setItemsFound(no_triangles);
-//        printf("[INFO Driver] Found %lu\n",no_triangles);
+////        printf("[INFO Driver] Found %lu\n",no_triangles);
+//        size_t total_count  = 0;
+//        for(int i  = 0; i < no_threads; i++){
+//            total_count += no_filter_count[i];
+//            no_filter_count[i] = 0;
+//        }
+//
+//        printf("Total explorations %lu\n", total_count);
         algo.output_final();
     }
 };
@@ -827,8 +933,9 @@ class DynamicEngineDriver: public EngineDriver {
         Embedding<uint32_t> embedding;
 
 
-
-        for(uint32_t i = 0; i < no_active;i++){
+//TODO uncomment when running GKS
+/*
+    for(uint32_t i = 0; i < no_active;i++){
 
 
             uint32_t src = uBuf->updates[i].src;
@@ -845,6 +952,8 @@ class DynamicEngineDriver: public EngineDriver {
         }
 
     wait_b(&xsync_end);
+
+*/
 //        if(tid == 0 ) algo.printMap();
         while(curr_item < no_active){
             get_work(tid, &thread_work[tid], no_active);
@@ -858,20 +967,21 @@ class DynamicEngineDriver: public EngineDriver {
 //                if(degree[src] < K -1 || degree[dst] < K - 1)continue;
 
 
-
+#ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,src)) {
 
                     continue;
                 }
 
+#endif
                 embedding.append(src);
-
+#ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,dst)) {
 
                     embedding.pop();
                     continue;
                 }
-
+#endif
                 embedding.append(dst);
 
 //                embedding.set_max_ts(uBuf->curr_ts);
@@ -923,7 +1033,7 @@ public:
         symmetric = symm;
         w_id = wid;
         no_workers = noWorker;
-
+        no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
         exploreEngine=  new E(nb_threads);
         uBuf = uB;
     }
@@ -953,6 +1063,7 @@ public:
         size_t no_batches =0;
         wait_b(&uBuf->updates_consumed);
         double total_time = 0;
+
         while(do_run){
             wait_b(&uBuf->updates_ready);
             no_active = uBuf->get_no_updates();
@@ -985,13 +1096,34 @@ public:
             algo.setItemsFound(no_triangles);
             algo.output_final();
 
-            exploreEngine->updateCaches();
 
+            exploreEngine->updateCaches();
+            size_t total_count_batch = 0;
+
+            for(int i  = 0; i < no_threads; i++){
+                total_count_batch += no_filter_count[i];
+                no_filter_count[i] = 0;
+            }
+
+            printf("Total explorations BATCH %lu\n", total_count_batch );
 
 
             wait_b(&uBuf->updates_consumed);
         }
         printf("[TIME] Total Algo time %.3f\n", total_time);
+
+//        printf("FILTER TIME %.3f\n" , time_filter);
+//        printf("PREFILTER TIME %.3f\n" , time_prefilter);
+//        printf("CANONIC CHECK %.3f\n" , time_canonic_check);
+        size_t total_count = 0;
+
+//        for(int i  = 0; i < no_threads; i++){
+//                total_count += no_filter_count[i];
+//                no_filter_count[i] = 0;
+//        }
+//
+//        printf("Total explorations %lu\n", total_count);
+
 
     }
 
