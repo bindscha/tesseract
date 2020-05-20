@@ -8,7 +8,7 @@
 #include "graph.hpp"
 
 
-//#define EDGE_TIMESTAMPS
+#define EDGE_TIMESTAMPS
 
 #define MAX_SIZE 8
 typedef uint32_t Edges;
@@ -51,10 +51,10 @@ private:
 
     size_t no_vertices_;
 
-//#ifdef EDGE_TIMESTAMPS
+#ifdef EDGE_TIMESTAMPS
     Timestamp max_ts_;
     Edges timestamps_;
-//#endif
+#endif
 
     inline size_t _edge_bit(size_t src_idx, size_t dst_idx) const {
 //        assert(src_idx != 0 && src_idx != dst_idx);
@@ -226,11 +226,8 @@ public:
     }
 
     inline void set_max_ts(Timestamp ts){
-#ifdef EDGE_TIMESTAMPS
         max_ts_ = ts;
-#endif
     }
-
     inline void append(V vertex) {
 //        _append(vertex);
         vertices_[no_vertices_++] = vertex;
@@ -296,15 +293,11 @@ public:
         return __builtin_popcount(edges_);
     }
 
-
-    inline const Timestamp max_ts() const{
 #ifdef EDGE_TIMESTAMPS
+    inline const Timestamp max_ts() const{
         return max_ts_;
-#else
-        return 0;
-#endif
     }
-//#endif
+#endif
 
     inline const V first() const{
         if (no_vertices_ > 0) {
@@ -395,7 +388,7 @@ public:
         }
     }
 
-//#ifdef EDGE_TIMESTAMPS
+#ifdef EDGE_TIMESTAMPS
     inline const size_t old_vertex_degree_at_index(size_t idx) const {
         if (idx >= 0 && idx < no_vertices_) {
             return __builtin_popcount((edges_ ^ timestamps_) & T_N_MASK_EDGES[idx]);
@@ -433,7 +426,7 @@ public:
             return false;
         }
     }
-//#endif
+#endif
 
     inline void print() {
         fprintf(stderr, "%lu-embedding [ ", no_vertices());

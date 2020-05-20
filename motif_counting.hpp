@@ -3,7 +3,7 @@
 
 #include<set>
 
-int per_thread_patterns[256][256];
+uint64_t per_thread_patterns[256][256];
 class MotifCountingE {
 public:
     uint32_t mask = 1 << 31;
@@ -128,7 +128,7 @@ public:
     }
 
     inline void output_final()const{
-        int unique = 0;
+        uint64_t unique = 0;
         printf("[STAT] Patterns: ");
         for(int i = 0; i <256; i++){
             for(int j = 0; j <56;j++) {

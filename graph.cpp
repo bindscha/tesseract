@@ -160,7 +160,7 @@ void init_graph_input(bool _mmap){
 
 
 //  assert(NULL!=edges);
-  if(!do_updates) {
+  if(do_updates) {
 //  for(uint32_t i = 0; i <NB_NODES;i++) {
 //      for (uint32_t j = 0; j < degree[i]; j++) {
 //          uint32_t dst = edges_full[adj_offsets[i] + j].dst;
@@ -179,7 +179,7 @@ void init_graph_input(bool _mmap){
 //    exit(0);
 
 //TODO PAralelize, too slow for bigger graphs
-      if (do_updates) {
+      if (!do_updates) {
 #pragma omp parallel for num_threads(56)
           for (uint32_t i = 0; i < NB_NODES; i++) {
               for (uint32_t j = 0; j < degree[i]; j++) {

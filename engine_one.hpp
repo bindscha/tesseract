@@ -33,7 +33,7 @@
 #define PFILTER 1
 size_t* no_filter_count;
 //#define MOTIF 1
-uint64_t CHUNK_SIZE = 1024;
+uint64_t CHUNK_SIZE = 2;
 //#define PREFILTER
 struct thread_work_t{
     uint32_t start;
@@ -53,16 +53,16 @@ size_t curr_item = 0;
 
 inline  void get_work(int tid, thread_work_t* t_work, uint32_t max){
 //    if(max < 10000) CHUNK_SIZE = 2;
-//    uint32_t incr = CHUNK_SIZE;
-//    if(max < 500000 ) CHUNK_SIZE = 4096;
+    uint32_t incr = CHUNK_SIZE;
+//    if(max < 1000 ) incr = 1;
 //  if( num == 0) incr = 1;
-    uint32_t idx = __sync_fetch_and_add(&curr_item, CHUNK_SIZE);
+    uint32_t idx = __sync_fetch_and_add(&curr_item, incr);
 
     if(idx >=max) {t_work->start = t_work->stop = max; return;}
 
     t_work->start = idx;
 
-    t_work->stop = t_work->start + CHUNK_SIZE;
+    t_work->stop = t_work->start + incr;
     if(t_work->stop >max )t_work->stop = max;
 }
 template <typename T,typename A>
@@ -260,8 +260,13 @@ public:
         e_cache_enabled = !e_cache_enabled;
         printf("Cache is: %d\n", e_cache_enabled);
     }
+#ifdef USE_MONGO
+    void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL, mongocxx::client& c=NULL) {
 
-    void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL, mongocxx::client& c=NULL) {//, const  std::unordered_set<VertexId>*ign=NULL){//const std::bitset<NB_BITS>*ign= NULL){//const std::unordered_set<VertexId>* ign=NULL){
+        //, const  std::unordered_set<VertexId>*ign=NULL){//const std::bitset<NB_BITS>*ign= NULL){//const std::unordered_set<VertexId>* ign=NULL){
+#else
+    void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL) {
+#endif
         VertexId dst, v_id = embedding->last();
 
         //MONGO
@@ -272,8 +277,8 @@ public:
         e1 = e1 | (uint64_t) ((*embedding)[1]);
 
         FOREACH_EDGE_TS(v_id, dst, ts)
-            no_filter_count[tid]++;
 //            no_filter_count[tid]++;
+            no_filter_count[tid]++;
             bool skip = false;
 #ifdef USE_MONGO
             if(dst % 8 != 0)
@@ -318,9 +323,9 @@ public:
 
 
             bool cont = false;
-
-            for (int k = 0; k < embedding->no_vertices() - 1; k++) {
-                if (embedding->edge_at_indices_is_new(embedding->no_vertices() - 1, k)) {
+            const uint32_t noV = embedding->no_vertices();
+            for (int k = 0; k < noV - 1; k++) {
+                if (embedding->edge_at_indices_is_new(noV  - 1, k)) {
 
                     uint64_t src1 = (uint64_t) ((*embedding)[k]);
                     uint64_t e2 = (dst > src1 ? src1 : dst);
@@ -503,8 +508,9 @@ public:
 
             start2 = std::chrono::high_resolution_clock::now();
 #endif
+            const uint32_t noV2=embedding->no_vertices();
             const bool filter =  (embedding->no_edges() ==
-                                ((embedding->no_vertices()) * (embedding->no_vertices() - 1)) /
+                                ((noV2) * (noV2 - 1)) /
                                 2 );
 
 //             if(filter){
@@ -535,7 +541,11 @@ public:
                         per_thread_e_cache_buffer[tid].push_back(*embedding);
                     }
 
+#ifdef USE_MONGO
                     explore(embedding, step + 1, tid,NULL,c);//, &bits_ign);//&ignore);
+#else
+                    explore(embedding, step + 1, tid,NULL);//, &bits_ign);//&ignore);
+#endif
                 } else {
                     per_thread_data[tid]++;
 
@@ -586,17 +596,20 @@ public:
         std::unordered_set<VertexId> neighbours(*neigh);
         VertexId dst;
         Timestamp ts;
+
+
         const VertexId v_id = embedding->last();
         uint64_t e1 = (uint64_t) ((*embedding)[0]) << 32;
         e1 = e1 | (uint64_t) ((*embedding)[1]);
         FOREACH_EDGE_TS(v_id, dst, ts)
 //        printf("Exploring %u from %u\n", dst,v_id);
+//            no_filter_count[tid]++;
             if(embedding->contains(dst))continue;
 
                 if(ts == embedding->max_ts() && dst < embedding->first()){
                     continue;
                 }
-//            no_filter_count[tid]++;
+
 #ifdef PFILTER
             if (!algo.pattern_filter(embedding,dst))continue;
 #endif
@@ -949,14 +962,14 @@ public:
             per_thread_data[i] = 0;
         }
         algo.setItemsFound(no_triangles);
-////        printf("[INFO Driver] Found %lu\n",no_triangles);
-//        size_t total_count  = 0;
-//        for(int i  = 0; i < no_threads; i++){
-//            total_count += no_filter_count[i];
-//            no_filter_count[i] = 0;
-//        }
-//
-//        printf("Total explorations %lu\n", total_count);
+        printf("[INFO Driver] Found %lu\n",no_triangles);
+        size_t total_count  = 0;
+        for(int i  = 0; i < no_threads; i++){
+            total_count += no_filter_count[i];
+            no_filter_count[i] = 0;
+        }
+
+        printf("Total explorations %lu\n", total_count);
         algo.output_final();
     }
 };
@@ -985,14 +998,16 @@ class DynamicEngineDriver: public EngineDriver {
 //
 //        if (sched_setaffinity(getpid(), sizeof(cpuset), &cpuset) == -1)
 //            printf("sched_setaffinity\n");
-        begin:
+        Embedding<uint32_t> embedding;
+begin:
         std::unordered_set<VertexId > neighbours;
         wait_b(&xsync_begin);
-        Embedding<uint32_t> embedding;
 
+#ifdef USE_MONGO
         auto mongo_c = pool.acquire();
+#endif
 //TODO uncomment when running GKS
-/*
+
     for(uint32_t i = 0; i < no_active;i++){
 
 
@@ -1011,7 +1026,7 @@ class DynamicEngineDriver: public EngineDriver {
 
     wait_b(&xsync_end);
 
-*/
+
 //        if(tid == 0 ) algo.printMap();
         while(curr_item < no_active){
             get_work(tid, &thread_work[tid], no_active);
@@ -1044,6 +1059,8 @@ class DynamicEngineDriver: public EngineDriver {
 #ifdef USE_MONGO
                 if(dst % 8 != 0)
                     if(exploreEngine->inMem[dst] < uBuf->curr_ts) {
+
+
                         degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst],  uBuf->curr_ts,
                                                       *mongo_c,tid);
                         exploreEngine->inMem[dst] =uBuf->curr_ts;
@@ -1074,8 +1091,11 @@ class DynamicEngineDriver: public EngineDriver {
                         }
                     ENDFOR
                 }
+#ifdef USE_MONGO
                 exploreEngine->explore(&embedding, 2, tid, &neighbours, *mongo_c);
-
+#else
+                exploreEngine->explore(&embedding, 2, tid, &neighbours);
+#endif
                 embedding.pop();
                 embedding.pop();
             }
@@ -1107,7 +1127,7 @@ public:
         symmetric = symm;
         w_id = wid;
         no_workers = noWorker;
-//        no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
+        no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
         exploreEngine=  new E(nb_threads);
         uBuf = uB;
     }

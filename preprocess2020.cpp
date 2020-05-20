@@ -22,7 +22,7 @@
 struct edge{
     VID_SIZE src;
     VID_SIZE dst;
-//    VID_SIZE w;
+    VID_SIZE w;
 };
 
 struct edge_adj{
