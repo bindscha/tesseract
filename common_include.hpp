@@ -31,11 +31,11 @@
 #include <forward_list>
 #include <iostream>
 
-#define K 3
+#define bigK 4
 
 
 
 
-//static int K = 3;
-//extern int K;
+//static int bigK = 3;
+//extern int bigK;
 #endif

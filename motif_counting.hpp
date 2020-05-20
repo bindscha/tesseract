@@ -13,10 +13,10 @@ public:
         return true;
     }
     inline bool match(const Embedding<VertexId>* embedding) const{
-        return embedding->no_vertices() == K;
+        return embedding->no_vertices() == bigK;
     }
     inline bool expand(const uint32_t step) const {
-        return step < K - 1;
+        return step < bigK - 1;
     }
     inline void process_update(Embedding<uint32_t> *pattern, uint32_t step) {
 
@@ -25,11 +25,11 @@ public:
 
     }
     inline void output(const Embedding<VertexId> *embedding, const int tid) {
-//        uint32_t deg[K];
+//        uint32_t deg[bigK];
 
-//        uint32_t deg2[K];
-        std::array<uint32_t,K> deg;
-        std::array<uint32_t,K> deg2;
+//        uint32_t deg2[bigK];
+        std::array<uint32_t,bigK> deg;
+        std::array<uint32_t,bigK> deg2;
 
 
         int no_edg = 0;
@@ -40,7 +40,7 @@ public:
             no_edg += embedding->old_vertex_degree_at_index(i);
 #endif
         }
-//        std::sort(deg, deg + K);
+//        std::sort(deg, deg + bigK);
 
 
         std::sort(deg.begin(), deg.end());
@@ -67,7 +67,7 @@ public:
         i = 0;
         if(no_edg/2 < (embedding->no_vertices()-1)) pattern_id2 = 0;
         else {
-//            std::sort(deg2, deg2 + K);
+//            std::sort(deg2, deg2 + bigK);
             std::sort(deg2.begin(), deg2.end());
 
             for (const auto &item: deg2) {
@@ -91,7 +91,7 @@ public:
     }
     inline void process(const Embedding<uint32_t> *emb, const uint32_t step,const int tid)   {
 //
-//      std::array<uint32_t,K> deg;
+//      std::array<uint32_t,bigK> deg;
 //      for(int i = 0; i < emb->no_vertices(); i++){
 //      deg[i] = emb->vertex_degree_at_index(i);
 //      }
@@ -109,14 +109,14 @@ public:
     }
 
     inline bool pattern_filter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
-        return true;//embedding->no_vertices() <= K;// true;
+        return true;//embedding->no_vertices() <= bigK;// true;
     }
     void init() {
         no_active = 0;
         if(!do_updates)
             for(uint32_t i = 0; i < NB_NODES; i++){
                 for(size_t idx = 0; idx < degree[i]; idx++) {
-                    if(edges[adj_offsets[i] + idx].dst > i) {
+                    if(edges_full[adj_offsets[i] + idx].dst > i) {
                         active[no_active] = adj_offsets[i] + idx;
                         no_active++;
                     }

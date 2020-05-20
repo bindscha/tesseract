@@ -1,12 +1,12 @@
 #ifndef TRIANGLE_C_HPP
 #define TRIANGLE_C_HPP
 
-//#define K 3
+//#define bigK 3
 //#define SIZE 5083604130LU //triangle uk 2005 directed
 //#define SIZE 385730264LU //300LU triangles
 
 //bool triangle_filter(uint32_t src, clique_vector set, uint32_t step){
-//  if(step < K - 1) return true;
+//  if(step < bigK - 1) return true;
 //
 //  for(uint32_t i = 0; i <degree[src];i++){
 //    uint32_t dst = edges[adj_offsets[src] + i].dst;
@@ -30,11 +30,11 @@ public:
     }
 
     inline  bool filter( const Embedding<uint32_t>* embedding) const  {
-        if(embedding->no_vertices() < K) return true;
+        if(embedding->no_vertices() < bigK) return true;
         uint32_t dst,ts;
 
         FOREACH_EDGE_TS(embedding->last(),dst,ts)
-//                if(ts <=set->ts_max)  
+//                if(ts <=set->ts_max)
          if( ts <= embedding->max_ts())
                  if(dst ==  embedding->first() ) return true;
         ENDFOR
@@ -43,7 +43,7 @@ public:
 
     }
     inline bool match(const Embedding<VertexId>* embedding) const{
-        return embedding->no_vertices() == K;
+        return embedding->no_vertices() == bigK;
     }
 
 
@@ -88,7 +88,7 @@ public:
             }
     }
     void output_final(){
-        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, K, total);
+        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, bigK, total);
 
     }
 };
@@ -106,7 +106,7 @@ class TriangleCount: public  Algorithm<Pattern<uint32_t, edge_full>> {
       }
 
       bool filter(uint32_t src, Pattern<uint32_t, edge_full>* set, uint32_t step) {
-        if(step < K - 1) return true;
+        if(step < bigK - 1) return true;
         uint32_t dst,ts;
 
 //        FOREACH_EDGE_TS(src,dst,ts)
@@ -135,7 +135,7 @@ inline void process_update_tid(Pattern <uint32_t, edge_full> *set, uint32_t step
         return true;
       }
       bool expand( uint32_t step) {
-        return step < K - 1;
+        return step < bigK - 1;
       }
 };
 #endif

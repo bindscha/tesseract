@@ -54,7 +54,7 @@ public:
         for(int i = 0; i < NO_WORDS;i++){
 //            assert(vertex_dist[cand][i] <=NB_EDGES);
             if(col_found[i] == 0) {
-                if (vertex_dist[cand][i] <= K - embedding->no_vertices() && vertex_dist[cand][i] <= MAX_HOPS){
+                if (vertex_dist[cand][i] <= bigK - embedding->no_vertices() && vertex_dist[cand][i] <= MAX_HOPS){
                     not_far++;
                     break;
 
@@ -146,7 +146,7 @@ public:
 //        int not_far;
 //        for(int i = 0; i < NO_WORDS;i++){
 //            if(col_found[i] == 0) {
-//                if (vertex_dist[cand][i] <= K - embedding->no_vertices() - 1 && vertex_dist[cand][i] <= MAX_HOPS){
+//                if (vertex_dist[cand][i] <= bigK - embedding->no_vertices() - 1 && vertex_dist[cand][i] <= MAX_HOPS){
 //                    not_far++;
 //                    break;
 //                }
@@ -154,10 +154,10 @@ public:
 //        }
 //        if(not_far  == 0 ) return false;
 
-        if(embedding->no_vertices() < K){
+        if(embedding->no_vertices() < bigK){
             return true;
         }
-        else if(embedding->no_vertices() == K){
+        else if(embedding->no_vertices() == bigK){
 
             int cols = 0;
             for (int i = 0; i < embedding->no_vertices(); i++) {
@@ -327,16 +327,16 @@ public:
         }
         if(!do_updates)
             for (uint32_t i = 0; i < NB_NODES; i++) {
-                if (degree[i] >=K - 1)//should_be_active(i))
+                if (degree[i] >= bigK - 1)//should_be_active(i))
                     for (size_t idx = 0; idx < degree[i]; idx++) {
-                        if (degree[edges_full[adj_offsets[i] + idx].dst] >=K - 1 && edges_full[adj_offsets[i] + idx].dst >
-                                                                                    i)
+                        if (degree[edges_full[adj_offsets[i] + idx].dst] >= bigK - 1 && edges_full[adj_offsets[i] + idx].dst >
+                                                                                        i)
                             active[no_active++] = adj_offsets[i] + idx;
                     }
             }
     }
     void output_final(){
-        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, K, total);
+        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, bigK, total);
 
     }
 };

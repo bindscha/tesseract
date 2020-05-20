@@ -1,15 +1,33 @@
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_C_COMPILER /usr/bin/gcc)
-
 project(tesseract)
 cmake_policy(VERSION 3.5.1)
+find_package(libmongocxx REQUIRED)
+find_package(libbsoncxx REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FILE_OFFSET_BITS=64  -D_FILE_OFFSET_BITS=64 -pthread -fms-extensions -ggdb3 -std=c++11 -pthread -fopenmp -U_FORTIFY_SOURCE -O3 -fno-stack-protector ")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11")
+message("LIBMONGOCXX_INCLUDE_DIRS = ${LIBMONGOCXX_INCLUDE_DIRS}")
+message("LIBMONGOCXX_LIBRARIES = ${LIBMONGOCXX_LIBRARIES}")
+
+message("LIBBSONCXX_INCLUDE_DIRS = ${LIBBSONCXX_INCLUDE_DIRS}")
+message("LIBBSONCXX_LIBRARIES = ${LIBBSONCXX_LIBRARIES}")
+#include_directories(${LIBBSONCXX_INCLUDE_DIR})
+#include_directories("/usr/local/include/mongocxx/v_noabi")
+#include_directories("/usr/local/include/bsoncxx/v_noabi")
+##include_directories("/usr/local/include/libmongoc-1.0")
+##include_directories("/usr/local/include/libbson-1.0")
+#include_directories("/usr/local/lib")
+#set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I/usr/local/include/mongocxx/v_noabi -I/usr/local/include/bsoncxx/v_noabi     -L/usr/local/lib -lmongocxx -lbsoncxx")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FILE_OFFSET_BITS=64  -D_FILE_OFFSET_BITS=64 -pthread -fms-extensions  -std=c++11 -pthread -fopenmp -U_FORTIFY_SOURCE -O1 -fno-stack-protector") # -lmongocxx -lbsoncxx ")
+
+
 include_directories("${PROJECT_SOURCE_DIR}")
+
+include_directories(${LIBMONGOCXX_INCLUDE_DIRS})
+include_directories( ${LIBBSONCXX_INCLUDE_DIRS})
 #add_executable(tesseract graph.cpp engine_one.hpp libtesseract.h tesseract.hpp tesseract.cpp)
-add_executable(libtesseract graph.cpp  libtesseract.h embedding.hpp engine_one.hpp libtesseract.cpp tesseract_driver.cpp scala_algos.h  ksearch.h)
+add_executable(libtesseract graph.cpp db_backend/mongoDriver.hpp db_backend/mongoDriver.cpp libtesseract.h embedding.hpp engine_one.hpp libtesseract.cpp tesseract_driver.cpp scala_algos.h  ksearch.h )
 add_executable(preprocess preprocess2020.cpp)
 #target_link_libraries(tesseract)
-target_link_libraries(libtesseract)
+target_link_libraries(libtesseract  ${LIBBSONCXX_LIBRARIES} ${LIBMONGOCXX_LIBRARIES})

@@ -10,7 +10,7 @@ public:
 
     inline  bool pattern_filter(const Embedding<VertexId >* embedding,const VertexId cand ) const  {
 
-        return  degree[cand] >=K - 1;
+        return degree[cand] >= bigK - 1;
     }
 
     inline  bool filter( const Embedding<uint32_t>* embedding) const  {
@@ -18,7 +18,7 @@ public:
 
     }
     inline bool match(const Embedding<VertexId>* embedding) const{
-        return embedding->no_vertices() == K;
+        return embedding->no_vertices() == bigK;
     }
 
 
@@ -52,18 +52,19 @@ public:
     }
 
     void init(){
+        no_active = 0;
         if(!do_updates)
             for (uint32_t i = 0; i < NB_NODES; i++) {
-                if (degree[i] >=K - 1)//should_be_active(i))
+                if (degree[i] >= bigK - 1)//should_be_active(i))
                     for (size_t idx = 0; idx < degree[i]; idx++) {
-                        if (degree[edges[adj_offsets[i] + idx].dst] >=K - 1 && edges[adj_offsets[i] + idx].dst >
-                                                                                    i)
+                        if (degree[edges_full[adj_offsets[i] + idx].dst] >= bigK - 1 && edges_full[adj_offsets[i] + idx].dst >
+                                                                                   i)
                             active[no_active++] = adj_offsets[i] + idx;
                     }
             }
     }
     void output_final(){
-        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, K, total);
+        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, bigK, total);
 
     }
 };

@@ -19,6 +19,7 @@
 #include "scala_algos.h"
 #include "motif_counting.hpp"
 #include "color_cliques.hpp"
+#include "db_backend/mongoDriver.hpp"
 //#include "updateBuffers.hpp"
 //#include "thread_data.hpp"
 #include "filter_cache.hpp"
@@ -28,10 +29,11 @@
 #include <mutex>
 //#include"Bitmap.h"
 //#define DEBUG_PRINT
+//#define USE_MONGO 1
 #define PFILTER 1
 size_t* no_filter_count;
 //#define MOTIF 1
-uint64_t CHUNK_SIZE= 2;
+uint64_t CHUNK_SIZE = 1024;
 //#define PREFILTER
 struct thread_work_t{
     uint32_t start;
@@ -50,16 +52,17 @@ size_t curr_item = 0;
 
 
 inline  void get_work(int tid, thread_work_t* t_work, uint32_t max){
-
-    uint32_t incr = CHUNK_SIZE;
+//    if(max < 10000) CHUNK_SIZE = 2;
+//    uint32_t incr = CHUNK_SIZE;
+//    if(max < 500000 ) CHUNK_SIZE = 4096;
 //  if( num == 0) incr = 1;
-    uint32_t idx = __sync_fetch_and_add(&curr_item, incr);
+    uint32_t idx = __sync_fetch_and_add(&curr_item, CHUNK_SIZE);
 
     if(idx >=max) {t_work->start = t_work->stop = max; return;}
 
     t_work->start = idx;
 
-    t_work->stop = t_work->start + incr;
+    t_work->stop = t_work->start + CHUNK_SIZE;
     if(t_work->stop >max )t_work->stop = max;
 }
 template <typename T,typename A>
@@ -71,20 +74,26 @@ class StaticExploreSymmetric{
     inline void explore_sym(Embedding<T> *embedding,const int step,const int tid){
         VertexId v_id = embedding->last();
         VertexId dst;
+//        edge_ts* result, uint64_t offsets, uint64_t& degree,int ts_search = 1);
+
+        uint32_t ts;
         FOREACH_EDGE_FWD(v_id, dst)
-            if(!algo.pattern_filter(embedding,dst)) continue;
+            if(degree[dst] < bigK - 1) continue;
+//            if(!algo.pattern_filter(embedding,dst)) continue;
             embedding->append(dst);
+            const uint32_t noV = embedding->no_vertices();
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
-            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
+            const bool filter = noV  == ((noV)* (noV -1 ))/2;
+//            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
 //            algo.filter(embedding);
             if(filter) {
-                if(step < K -1 ){
+                if(step < bigK - 1 ){
                     explore_sym(embedding, step + 1, tid);
                 }
                 else {
                     per_thread_data[tid]++;
 //                    printf("ST (");
-//                    for(int k = 0; k < K ; k++){
+//                    for(int k = 0; k < bigK ; k++){
 //                        printf("%u ",(*embedding)[k]);
 //                    }
 //                    printf(")\n");
@@ -94,7 +103,7 @@ class StaticExploreSymmetric{
 //                    per_thread_data[tid]++;
 //                }
 //
-//                if (step < K - 1) {
+//                if (step < bigK - 1) {
 //                    explore_sym(embedding, step + 1, tid);
 //                }
             }
@@ -106,10 +115,13 @@ public:
     void setAlgo(A* a){
         algo = *a;
     }
+
+//    void __attribute__((optimize("O1")))
     void explore(Embedding<T> *embedding, int step, const int tid, const std::unordered_set<VertexId> *neigh,
                  const std::unordered_set<VertexId> *ign)  {
         explore_sym(embedding,step,tid);
     }
+
     inline void  buildNeighbours(const Embedding<VertexId > embedding,const VertexId src,const VertexId  dst, std::unordered_set<VertexId>* neighbours){
 
     }
@@ -122,6 +134,7 @@ class StaticExploreNonSym{
         std::unordered_set<VertexId> neighbours(*neigh);
         const VertexId v_id = embedding->last();
         VertexId dst;
+        Timestamp ts;
         FOREACH_EDGE(v_id, dst)
             if(embedding->first() < dst && !embedding->contains(dst))
                 neighbours.insert(dst);
@@ -136,16 +149,17 @@ class StaticExploreNonSym{
             const bool filter = true;//algo.filter(embedding);
 
             if(filter){
-                if(step < K -1)
+                if(step < bigK - 1)
                     explore(embedding, step + 1 , tid, &neighbours);//, &bits_ign);//ignore);
                 else {
-                    per_thread_data[tid]++;
-                    std::array<uint32_t,K> deg;
+//                    per_thread_data[tid]++;
+                    std::array<uint32_t,bigK> deg;
                     int no_edg = 0;
-                    for(int i = 0; i < embedding->no_vertices(); i++){
+                    const int noV = embedding->no_vertices();
+                    for(int i = 0; i < noV; i++){
                         deg[i] = embedding->vertex_degree_at_index(i);
                     }
-//        std::sort(deg, deg + K);
+//        std::sort(deg, deg + bigK);
 
 
                     std::sort(deg.begin(), deg.end());
@@ -157,7 +171,7 @@ class StaticExploreNonSym{
 
                         pattern_id1 = pattern_id1 | (int)item;
 
-                        if(i == embedding->no_vertices() - 1 )break;
+                        if(i == noV - 1 )break;
                         i++;
                         pattern_id1 = pattern_id1 << 2;
                     }
@@ -170,7 +184,7 @@ class StaticExploreNonSym{
 //                    algo.output(embedding,tid);
 //                    per_thread_data[tid]++;
 //                }
-//                if(step < K-1)
+//                if(step < bigK-1)
 //                    explore_nonSym(embedding, step + 1, tid, &neighbours);
             }
             embedding->pop();
@@ -220,6 +234,7 @@ class DynamicExploreSymmetric{
         }
     }
 public:
+    uint32_t* inMem;
     DynamicExploreSymmetric(int n_threads)  {
         no_threads = n_threads;
         e_cache_enabled = false ;
@@ -231,6 +246,7 @@ public:
                 per_thread_e_cache_buffer[i].reserve(151880496);//151880496
             }
         }
+        inMem = (uint32_t*) calloc(NB_NODES,sizeof(uint32_t));
     }
     void setAlgo(A* a){
         algo = *a;
@@ -245,8 +261,11 @@ public:
         printf("Cache is: %d\n", e_cache_enabled);
     }
 
-    void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL) {//, const  std::unordered_set<VertexId>*ign=NULL){//const std::bitset<NB_BITS>*ign= NULL){//const std::unordered_set<VertexId>* ign=NULL){
+    void explore(Embedding<VertexId> *embedding, int step,const int tid, const  std::unordered_set<VertexId>* neigh=NULL, mongocxx::client& c=NULL) {//, const  std::unordered_set<VertexId>*ign=NULL){//const std::bitset<NB_BITS>*ign= NULL){//const std::unordered_set<VertexId>* ign=NULL){
         VertexId dst, v_id = embedding->last();
+
+        //MONGO
+
         Timestamp ts;
 
         uint64_t e1 = (uint64_t) ((*embedding)[0]) << 32;
@@ -256,7 +275,13 @@ public:
             no_filter_count[tid]++;
 //            no_filter_count[tid]++;
             bool skip = false;
-
+#ifdef USE_MONGO
+            if(dst % 8 != 0)
+            if(inMem[dst] < embedding->max_ts()) {
+                degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst], embedding->max_ts(), c,tid);
+                inMem[dst] = embedding->max_ts();
+            }
+#endif
 #ifdef PFILTER
 #ifdef COUNT_TIME
             auto start2 = std::chrono::high_resolution_clock::now();
@@ -504,12 +529,13 @@ public:
                 time_filter += diff.count();
 #endif
 
-                if (step < K - 1) {
+                if (step < bigK - 1) {
 
                     if (e_cache_enabled) {
                         per_thread_e_cache_buffer[tid].push_back(*embedding);
                     }
-                    explore(embedding, step + 1, tid);//, &bits_ign);//&ignore);
+
+                    explore(embedding, step + 1, tid,NULL,c);//, &bits_ign);//&ignore);
                 } else {
                     per_thread_data[tid]++;
 
@@ -550,6 +576,7 @@ class DynamicExploreNonSym {
     A algo;
     int no_threads; //TODO not used
 public:
+    uint32_t* inMem;
     void setAlgo(A* a){
         algo = *a;
     }
@@ -620,11 +647,11 @@ public:
             const bool filter = algo.filter(embedding);
 #ifdef MOTIF
         if(filter){
-            if(step < K -1 )
+            if(step < bigK -1 )
                 explore(embedding, step + 1, tid, &neighbours);
             else {
-                                    std::array<uint32_t,K> deg;
-                    std::array<uint32_t,K> deg2;
+                                    std::array<uint32_t,bigK> deg;
+                    std::array<uint32_t,bigK> deg2;
 
 
                     int no_edg = 0;
@@ -635,7 +662,7 @@ public:
                         no_edg += embedding->old_vertex_degree_at_index(i);
 #endif
                     }
-//        std::sort(deg, deg + K);
+//        std::sort(deg, deg + bigK);
 
 
                     std::sort(deg.begin(), deg.end());
@@ -695,14 +722,14 @@ public:
                     per_thread_data[tid]++;
 
                 } else
-//                    if(embedding->no_vertices() < K)
+//                    if(embedding->no_vertices() < bigK)
                      explore(embedding, step + 1, tid, &neighbours);//, &bits_ign);//ignore);
 //                else{
 ////                if(algo.match(embedding)) {
 //                    algo.output(embedding, tid);
 //                    per_thread_data[tid]++;
 ////                }
-//                /*if(step < K -1)
+//                /*if(step < bigK -1)
 //                    explore(embedding, step + 1 , tid, &neighbours);//, &bits_ign);//ignore);
 
 
@@ -753,31 +780,48 @@ class StaticEngineDriver: public EngineDriver{
     E* exploreEngine;
     A algo;
     size_t edges_processed = 0;
+
     void compute(void* c) {
         int tid = (long) c;
+
+        Embedding<VertexId>embedding;
+
         begin:
+
         wait_b(&xsync_begin);
+
         size_t prev_upd = 0;
 
+//     if(tid!=0) {
+//         cpu_set_t cpuset;
+//         CPU_ZERO(&cpuset);
+//         CPU_SET(tid, &cpuset);
+//
+//         if (sched_setaffinity(getpid(), sizeof(cpuset), &cpuset) == -1)
+//             printf("sched_setaffinity\n");
+//     }
         auto start = std::chrono::high_resolution_clock::now();
 
-        Embedding<VertexId> embedding;
+
         while (curr_item < no_active) {
+
+
             get_work(tid, &thread_work[tid], no_active);
 
             if (thread_work[tid].start == thread_work[tid].stop) goto end;
             for (; thread_work[tid].start < thread_work[tid].stop; thread_work[tid].start++) {
 
-                VertexId src, dst;
+                 VertexId src, dst;
 
-                src = edges[active[thread_work[tid].start]].src;
-                dst = edges[active[thread_work[tid].start]].dst;
+                src = edges_full[active[thread_work[tid].start]].src;
+                dst = edges_full[active[thread_work[tid].start]].dst;
 
                 if (dst < src) continue;
 #ifdef COUNT_TIME
                 auto start2 = std::chrono::high_resolution_clock::now();
 #endif
 //                std::cout << "[TIME] Batch process time: " << diff.count() << " seconds\n";
+//                if(degree[src] < bigK-1){
                 if(!algo.pattern_filter(&embedding,src))  {
 #ifdef COUNT_TIME
 
@@ -796,6 +840,7 @@ class StaticEngineDriver: public EngineDriver{
 #ifdef COUNT_TIME
                 start2 = std::chrono::high_resolution_clock::now();
 #endif
+//                if(degree[dst] < bigK-1){
                 if( !algo.pattern_filter(&embedding,dst)) {
 #ifdef COUNT_TIME
                      end2 = std::chrono::high_resolution_clock::now();
@@ -859,7 +904,7 @@ public:
         init_barrier(&xsync_end, no_threads);
         per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
         thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
-
+//        embedding_array = (Embedding<VertexId>*) calloc(no_threads, sizeof(Embedding<VertexId>));
         symmetric = symm;
         w_id = wid;
         no_workers = noWorker;
@@ -881,6 +926,12 @@ public:
 
     void execute_app(){
         algo.init();
+//        cpu_set_t cpuset;
+//        CPU_ZERO(&cpuset);
+//        CPU_SET(0, &cpuset);
+//
+//        if (sched_setaffinity(getpid(), sizeof(cpuset), &cpuset) == -1)
+//            printf("sched_setaffinity\n");
         exploreEngine->setAlgo(&algo);
         printf("[STAT] Number of active items: %lu\n",no_active);
 
@@ -924,15 +975,22 @@ class DynamicEngineDriver: public EngineDriver {
     A algo;
     U *uBuf;
     size_t items_processed =0 ;
+
 //    static const size_t NB_BITS = 10000;
     void compute(void*c){
         int tid = (long) c;
+//        cpu_set_t cpuset;
+//        CPU_ZERO(&cpuset);
+//        CPU_SET(tid, &cpuset);
+//
+//        if (sched_setaffinity(getpid(), sizeof(cpuset), &cpuset) == -1)
+//            printf("sched_setaffinity\n");
         begin:
         std::unordered_set<VertexId > neighbours;
         wait_b(&xsync_begin);
         Embedding<uint32_t> embedding;
 
-
+        auto mongo_c = pool.acquire();
 //TODO uncomment when running GKS
 /*
     for(uint32_t i = 0; i < no_active;i++){
@@ -964,9 +1022,17 @@ class DynamicEngineDriver: public EngineDriver {
                 src = uBuf->updates[thread_work[tid].start].src;
                 dst = uBuf->updates[thread_work[tid].start].dst;
 
-//                if(degree[src] < K -1 || degree[dst] < K - 1)continue;
 
 
+//                if(degree[src] < bigK -1 || degree[dst] < bigK - 1)continue;
+#ifdef USE_MONGO
+                if(src % 8 != 0)
+                    if(exploreEngine->inMem[src] < uBuf->curr_ts) {
+                        degree[src] = queryCollection(src, edges, adj_offsets[src], degree[src],  uBuf->curr_ts,
+                                                      *mongo_c,tid);
+                        exploreEngine->inMem[src] = uBuf->curr_ts;
+                    }
+#endif
 #ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,src)) {
 
@@ -975,6 +1041,14 @@ class DynamicEngineDriver: public EngineDriver {
 
 #endif
                 embedding.append(src);
+#ifdef USE_MONGO
+                if(dst % 8 != 0)
+                    if(exploreEngine->inMem[dst] < uBuf->curr_ts) {
+                        degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst],  uBuf->curr_ts,
+                                                      *mongo_c,tid);
+                        exploreEngine->inMem[dst] =uBuf->curr_ts;
+                    }
+#endif
 #ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,dst)) {
 
@@ -1000,7 +1074,7 @@ class DynamicEngineDriver: public EngineDriver {
                         }
                     ENDFOR
                 }
-                exploreEngine->explore(&embedding, 2, tid, &neighbours);
+                exploreEngine->explore(&embedding, 2, tid, &neighbours, *mongo_c);
 
                 embedding.pop();
                 embedding.pop();
@@ -1026,14 +1100,14 @@ public:
         init_barrier(&xsync_end, no_threads);
         per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
 
-        per_thread_cache_hit = (size_t *) calloc(no_threads, sizeof(size_t));
-        per_thread_post_cache_explore = (size_t *) calloc(no_threads, sizeof(size_t));
+//        per_thread_cache_hit = (size_t *) calloc(no_threads, sizeof(size_t));
+//        per_thread_post_cache_explore = (size_t *) calloc(no_threads, sizeof(size_t));
         thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
 
         symmetric = symm;
         w_id = wid;
         no_workers = noWorker;
-        no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
+//        no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
         exploreEngine=  new E(nb_threads);
         uBuf = uB;
     }
@@ -1112,11 +1186,14 @@ public:
         }
         printf("[TIME] Total Algo time %.3f\n", total_time);
 
+
 //        printf("FILTER TIME %.3f\n" , time_filter);
 //        printf("PREFILTER TIME %.3f\n" , time_prefilter);
 //        printf("CANONIC CHECK %.3f\n" , time_canonic_check);
         size_t total_count = 0;
-
+#ifdef USE_MONGO
+        printDBTIME();
+#endif
 //        for(int i  = 0; i < no_threads; i++){
 //                total_count += no_filter_count[i];
 //                no_filter_count[i] = 0;

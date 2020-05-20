@@ -10,7 +10,8 @@ GraphUpdateType updateType;
 //
 // Globals
 //
-
+int noWorkers;
+int workerId;
 Algorithm algorithm;
 output_callback_fun_t output_callback = NULL;
 
@@ -47,6 +48,8 @@ void output_random_stuff() {
 //
 
 void init(const Configuration *configuration) {
+    noWorkers = configuration->num_workers;
+    workerId = configuration->worker_id;
     printf("Initialized Tesseract worker %lu (out of %lu) for algorithm %lu\n", configuration->worker_id, configuration->num_workers, configuration->algorithm_id);
     switch(configuration->algorithm_id){
 //        case 100:{
@@ -77,10 +80,10 @@ void init(const Configuration *configuration) {
 //        }
         case 0:
         {
-            printf("[INFO] Running %d-Cliques with %d threads\n",K, configuration->no_threads);
+            printf("[INFO] Running %d-Cliques with %d threads\n", bigK, configuration->no_threads);
 //            if(do_updates){
 //                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
-//                do_updates = false;
+////                do_updates = false;
 //                e_tmp->execute_app();
 //                do_updates = true;
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
@@ -89,9 +92,9 @@ void init(const Configuration *configuration) {
                 e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
             break;
         }
-//        case 1:
-//        {
-//            printf("[INFO] Running %d-MC with %d threads\n",K, configuration->no_threads);
+        case 1:
+        {
+//            printf("[INFO] Running %d-MC with %d threads\n",bigK, configuration->no_threads);
 //            if(do_updates) {
 ////                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
 ////                do_updates = false;
@@ -103,12 +106,12 @@ void init(const Configuration *configuration) {
 //                        configuration->no_threads, false, updateBuf);
 //            }
 ////           else
-////               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
-//            break;
-////        }
-//        case 2:
+//               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
+            break;
+        }
+//           case 2:
 //        {
-//            printf("[INFO] Running %d-LCliques with %d threads\n",K, configuration->no_threads);
+//            printf("[INFO] Running %d-LCliques with %d threads\n",bigK, configuration->no_threads);
 //            if(do_updates){
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
 //            }
@@ -118,7 +121,7 @@ void init(const Configuration *configuration) {
 //        }
 //        case 3:
 //        {
-//            printf("[INFO] Running %d-Keyword search with %d threads\n",K, configuration->no_threads);
+//            printf("[INFO] Running %d-Keyword search with %d threads\n",bigK, configuration->no_threads);
 //            if(do_updates){
 //                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, KSearchE>,KSearchE,UpdateBuffer>(configuration->no_threads,false, updateBuf);
 //            }
@@ -171,13 +174,15 @@ void init_update_buf(size_t b_size, size_t nb_edges, size_t nb_nodes,int no_thre
     updateBuf = new UpdateBuffer(b_size,nb_edges,nb_nodes,initial_chunk,no_threads);
 }
 
-size_t preloadChunk(const size_t chunk_size, Configuration* configuration,std::vector<uint64_t>*vec){
+
+
+size_t preloadChunk(const size_t chunk_size,const Configuration* configuration,const std::unordered_set<uint64_t>&update_idx){
     printf("[STAT] Preloading %lu updates\n", chunk_size);
 //    std::thread** threads = (std::thread**) calloc(1, sizeof(std::thread*)); //configuration->no_threads - 1, sizeof(std::thread*));
 //    for (int i = 0; i < 1; i++){///configuration->no_threads - 1; i++) {
 //        threads[i] = new std::thread(&UpdateBuffer::preload_edges_before_update, updateBuf, edges_full, (i + 1), edges, 2);//(int)configuration->no_threads);
 //    }
-    size_t ret = updateBuf->preload_edges_before_update(edges_full, 0, edges,1,vec);// configuration->no_threads);
+    size_t ret = updateBuf->preload_edges_before_update(edges_full, 0, edges,1,update_idx);// configuration->no_threads);
 
     printf("[INFO] Preload done\n");
 //    for(int i =0; i < 1;i++){//configuration->no_threads-1; i++){
@@ -206,27 +211,40 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
    // output_random_stuff();
 
     if(dst < src) return;
-    updateBuf->curr_ts = ts;
-    edges[adj_offsets[src] + degree[src]].src = src;
-    edges[adj_offsets[src] + degree[src]].dst = dst;
-    edges[adj_offsets[src] + degree[src]].ts = ts;
+//    if(true){//src % noWorkers == workerId) {
+        updateBuf->curr_ts = ts;
+#ifndef USE_MONGO
+        edges[adj_offsets[src] + degree[src]].src = src;
+        edges[adj_offsets[src] + degree[src]].dst = dst;
+        edges[adj_offsets[src] + degree[src]].ts = ts;
 
-    degree[src]++;
-    assert(degree[src]>=0);
-    edges[adj_offsets[dst] + degree[dst]].src = dst;
-    edges[adj_offsets[dst] + degree[dst]].dst = src;
-    edges[adj_offsets[dst] + degree[dst]].ts = ts;
-    degree[dst]++;
-    assert(degree[dst]>=0);
-    uint32_t h_src =murmur3_32(( uint8_t *)(&src), 4, dst);
+        degree[src]++;
+        assert(degree[src] >= 0);
+        edges[adj_offsets[dst] + degree[dst]].src = dst;
+        edges[adj_offsets[dst] + degree[dst]].dst = src;
+        edges[adj_offsets[dst] + degree[dst]].ts = ts;
+        degree[dst]++;
+        assert(degree[dst] >= 0);
+#else
+        if(src % 8 == workerId){
+            edges[adj_offsets[src] + degree[src]].src = src;
+            edges[adj_offsets[src] + degree[src]].dst = dst;
+            edges[adj_offsets[src] + degree[src]].ts = ts;
+
+            degree[src]++;
+
+        }
+#endif
+        uint32_t h_src = murmur3_32((uint8_t *) (&src), 4, dst);
+//    }
 //        if((true)){//
 
-    if(true){//h_src % e->getNoWorkers()  == e->getWid()     ) {
+//    if(src % noWorkers  == workerId     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
 //        updateBuf->curr_ts = ts;
         updateBuf->incNoUpdates();
-    }
+//    }
     //printf("Received new edge %u->%u (ts=%u)\n", src, dst, ts);
 }
 

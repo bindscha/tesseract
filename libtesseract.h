@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include<vector>
+#include <unordered_set>
 //
 // BEGIN NEW API
 //
@@ -84,7 +85,7 @@ extern "C" void start();
 
 extern "C" void stop();
 
-extern "C" size_t preloadChunk(const size_t chunk_size, Configuration* configuration,std::vector<uint64_t>*vec);
+extern "C" size_t preloadChunk(const size_t chunk_size,const  Configuration* configuration,const std::unordered_set<uint64_t>& update_idx);
 
 extern "C" void vertex_new(const VertexId id, const Timestamp ts);
 
@@ -103,6 +104,9 @@ extern "C" void batch_new(const GraphUpdate *buffer, size_t num_entries);
 extern "C" void set_output_callback(output_callback_fun_t f);
 
 extern "C" void unset_output_callback();
+
+
+
 extern Algorithm algorithm;
 extern GraphUpdateType updateType;
 //TODO Add functions for initializing the update buffer structure

@@ -145,19 +145,21 @@ void init_graph_input(bool _mmap){
       assert(b_r!=-1);
       b_read += b_r;
   }
-      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
-    if(do_updates)
-    for(size_t i =0 ; i < NB_EDGES;i++){
-        edges[i].ts = NB_EDGES;//UINT64_MAX;
+//      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+    if(do_updates) {
+        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+        for (size_t i = 0; i < NB_EDGES; i++) {
+            edges[i].ts = NB_EDGES;//UINT64_MAX;
+        }
+        printf("NB_EDGES  %lu \n", NB_EDGES);
     }
-    printf("NB_EDGES  %lu \n",NB_EDGES);
   }
 
 
   init_adj_degree();
 
 
-  assert(NULL!=edges);
+//  assert(NULL!=edges);
   if(!do_updates) {
 //  for(uint32_t i = 0; i <NB_NODES;i++) {
 //      for (uint32_t j = 0; j < degree[i]; j++) {
@@ -177,18 +179,20 @@ void init_graph_input(bool _mmap){
 //    exit(0);
 
 //TODO PAralelize, too slow for bigger graphs
+      if (do_updates) {
 #pragma omp parallel for num_threads(56)
-    for(uint32_t i = 0; i < NB_NODES; i++){
-        for(uint32_t j = 0; j < degree[i];j++){
+          for (uint32_t i = 0; i < NB_NODES; i++) {
+              for (uint32_t j = 0; j < degree[i]; j++) {
 
-            if(edges_full[adj_offsets[i] + j].src != i){
-                printf("Problem with input %u-%u is in edge array, instea of %u-%u\n",edges_full[adj_offsets[i] + j].src , edges_full[adj_offsets[i] + j].dst, i);
-            }
-      assert(edges_full[adj_offsets[i] + j].src == i);
+                  if (edges_full[adj_offsets[i] + j].src != i) {
+                      printf("Problem with input %u-%u is in edge array, instea of %u-%u\n",
+                             edges_full[adj_offsets[i] + j].src, edges_full[adj_offsets[i] + j].dst, i);
+                  }
+                  assert(edges_full[adj_offsets[i] + j].src == i);
 
-      edges[adj_offsets[i] + j].src= i;
-      edges[adj_offsets[i] + j].dst = edges_full[adj_offsets[i] + j].dst;
-      edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i]+ j;
+                  edges[adj_offsets[i] + j].src = i;
+                  edges[adj_offsets[i] + j].dst = edges_full[adj_offsets[i] + j].dst;
+                  edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i]+ j;
 //      if(edges_full[adj_offsets[i]  +j].dst < i){
 //        if(! has_edge_ts_set(edges[adj_offsets[i]  +j].dst,i,&edges[adj_offsets[i] + j].ts)){
 //          edges[adj_offsets[i] + j].ts = 0;// adj_offsets[i] +j;
@@ -196,10 +200,10 @@ void init_graph_input(bool _mmap){
 //      }
 //      else
 //        edges[adj_offsets[i] + j].ts = adj_offsets[i] + j;
+              }
+          }
       }
-    }
   }
-
   no_active_next = 0;
 
 }

@@ -39,7 +39,7 @@ void readIn(size_t NB_EDGES, edge* input, std::unordered_set<VID_SIZE>* edges, s
         edge e  = input[idx];
         assert(e.src< nb_nodes);
         assert(e.dst < nb_nodes);
-        if (e.src % NO_THREADS == tid)
+        if (e.src % NO_THREADS == tid && e.src != e.dst)
             edges[e.src].insert(e.dst);
 //        if(e.dst % NO_THREADS == tid){
 //            edges_rev[e.dst].insert(e.src);
@@ -67,7 +67,8 @@ void readOut(size_t NB_EDGES, edge* input, std::unordered_set<VID_SIZE>* edges, 
         edge e  = input[idx];
 
 
-            if (e.dst % NO_THREADS != tid) continue;
+            if (e.dst % NO_THREADS != tid || e.src == e.dst) continue;
+
             edges[e.dst].insert(e.src);
     }
 //    std::cout << " Thread " << tid << "done\n";
@@ -86,6 +87,7 @@ void setOffsets(size_t nb_nodes, edge_adj* out_edge_array, std::unordered_set<VI
         for (auto dst: edges[start]) {
 
             assert(offsets[start] + curr <NEW_EDGES);
+            assert(start != dst);
             out_edge_array[offsets[start]+ curr].src = start;
             out_edge_array[offsets[start] + curr].dst = dst;
             curr++;

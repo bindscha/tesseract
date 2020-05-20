@@ -8,9 +8,9 @@ class ColorCliqueE{
 public:
     inline bool pattern_filter(const Embedding<uint32_t>* embedding,const uint32_t cand ) const {
 
-        if(degree[cand] < K -1 )  return false;
+        if(degree[cand] < bigK - 1 )  return false;
         for(int i = 0; i < embedding->no_vertices();i++){
-            if( (*embedding)[i] % K == cand % K) {
+            if((*embedding)[i] % bigK == cand % bigK) {
                 return false;
             }
         }
@@ -19,7 +19,7 @@ public:
     inline bool filter( const Embedding<VertexId>* embedding) const{ //const uint32_t cand, const Embedding<uint32_t>* embedding,const uint32_t step)const  {
 
 //        for(int i = 0; i < embedding->no_vertices() -1;i++){
-//            if( (*embedding)[i] % K == embedding->last() % K) return false;
+//            if( (*embedding)[i] % bigK == embedding->last() % bigK) return false;
 //        }
 
         return embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
@@ -27,7 +27,7 @@ public:
     }
 
     inline bool match(const Embedding<VertexId>* embedding) const{
-        return embedding->no_vertices() == K;
+        return embedding->no_vertices() == bigK;
     }
 
 
@@ -61,16 +61,16 @@ public:
         total += items;
     }
     void output_final(){
-        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, K, total);
+        printf("[STAT] Found %lu %d-cliques (%lu total) \n", no_cliques, bigK, total);
 
     }
     void init(){
         if(!do_updates)
             for (uint32_t i = 0; i < NB_NODES; i++) {
-                if (degree[i] >= K - 1)//should_be_active(i))
+                if (degree[i] >= bigK - 1)//should_be_active(i))
                     for (size_t idx = 0; idx < degree[i]; idx++) {
-                        if (degree[edges[adj_offsets[i] + idx].dst] >= K - 1 && edges[adj_offsets[i] + idx].dst >
-                                                                                    i)
+                        if (degree[edges[adj_offsets[i] + idx].dst] >= bigK - 1 && edges[adj_offsets[i] + idx].dst >
+                                                                                   i)
                             active[no_active++] = adj_offsets[i] + idx;
                     }
             }

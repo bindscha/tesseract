@@ -52,6 +52,8 @@ class UpdateBuffer{
     size_t no_up_currently  =0;
     uint32_t batch_size = 1000;
 public:
+
+
     edge_full* updates;
     x_barrier updates_ready;
     x_barrier updates_consumed;
@@ -79,6 +81,7 @@ public:
 //    }
 //    uint32_t* node_ts;
     size_t no_edges;
+
     UpdateBuffer(uint32_t _batch_size, uint64_t _NB_EDGES, uint32_t nb_nodes, size_t _initial_chunk = 0, int n = 1)
             : batch_size(_batch_size), no_edges(_NB_EDGES), initial_chunk(_initial_chunk), no_threads(n){//} v(_NB_EDGES) {
       //      node_bitset = (std::vector<bool> *) calloc(nb_nodes, sizeof(std::vector<bool>));
@@ -104,7 +107,7 @@ public:
 //      for(size_t i  = 0; i <no_edges;i++){
 //        printf("%u->%u (%u->%u)\n",updates[i].src,updates[i].dst, e[i].src,e[i].dst);
 //      }
-      printf("added %lu updates(%lu self loops) \n",no_edges,equals);
+//      printf("added %lu updates(%lu self loops) \n",no_edges,equals);
 //      batch_size= 100000;
 //      batch_size=no_edges - 10000000;
     }
@@ -117,17 +120,19 @@ public:
     inline void resetNoUpdates(){
         no_up_currently = 0;
     }
-    size_t preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads, std::vector<uint64_t>* vec = NULL){
+    size_t preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads, const std::unordered_set<uint64_t>&update_idx){
         wait_b(&xsync_begin);
-      size_t num = initial_chunk / no_threads;
+
+      size_t num = NB_EDGES / no_threads;
 
       size_t start = (size_t)tid *num;
       size_t stop = start + num;
-      if(tid == no_threads - 1) stop =  initial_chunk;
+      if(tid == no_threads - 1) stop =  NB_EDGES;
         size_t total_looped = 0;
-      for(;start < stop && total_looped  < NB_EDGES - 10000000;total_looped++){
-
-        if(e[total_looped].src >e[total_looped].dst){//->at(total_looped)].dst) {
+//      for(;start < stop && total_looped  < NB_EDGES - 10000000;total_looped++){
+          for(;start < stop && total_looped  < NB_EDGES;total_looped++){
+              if(update_idx.count(total_looped) != 0 ) continue;
+        if(e[total_looped].src >e[total_looped].dst ){//->at(total_looped)].dst) {
             continue;
         }
 

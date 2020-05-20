@@ -45,7 +45,7 @@ extern bool do_updates;
 
 #define FOREACH_EDGE_FWD(n, _dst)\
        for(uint32_t _i = 0; _i < degree[n]; _i++){ \
-              uint32_t dst2 = edges[adj_offsets[n] + _i].dst;\
+              uint32_t dst2 = edges_full[adj_offsets[n] + _i].dst;\
               if(dst2 > n) _dst = dst2; else continue;
 
 #define FOREACH_EDGE_BACK(n, _dst)\
@@ -55,7 +55,7 @@ extern bool do_updates;
 
 #define FOREACH_EDGE(n, _dst)\
        for(uint32_t _i = 0; _i < degree[n]; _i++) { \
-            _dst = edges[adj_offsets[n] + _i].dst;
+            _dst = edges_full[adj_offsets[n] + _i].dst;
 
 #define FOREACH_EDGE_TS(n, _dst, _ts)\
        for(uint32_t _i = 0; _i < degree[n]; _i++) { \
