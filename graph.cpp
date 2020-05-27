@@ -78,8 +78,17 @@ void init_adj_degree(){
     exit(1);
 
   }
+    struct stat sb;
+    fstat(fd, &sb);
   adj_offsets = (size_t*) calloc(NB_NODES, sizeof(size_t));
-  size_t b_read = read(fd, adj_offsets, NB_NODES * sizeof(size_t));
+
+    size_t b_read = 0;
+    while(b_read <sb.st_size){
+        size_t b_r = read(fd, adj_offsets+b_read/sizeof(size_t), sb.st_size - b_read);
+        assert(b_r!=-1);
+        b_read += b_r;
+    }
+//  size_t b_read = read(fd, adj_offsets, NB_NODES * sizeof(size_t));
   assert(b_read == NB_NODES * sizeof(size_t));
 
 if(!do_updates) {
@@ -118,24 +127,43 @@ void init_graph_input(bool _mmap){
 
   NB_EDGES = (size_t) sb.st_size / sizeof(struct edge_full);
 
-  active= (uint32_t*) malloc(NB_EDGES* sizeof(uint32_t));
+  //TODO change back after data commons
+  active= (uint32_t*) malloc(NB_EDGES* sizeof(uint32_t));//NB_EDGES* sizeof(uint32_t));
+//
+  if(false){ //_mmap){
+      size_t part_to_load = (sb.st_size / 8) / 8;
+   if( part_to_load % 2 != 0)
+       part_to_load += 1;
+       NB_EDGES = part_to_load;
+       part_to_load *= 8;
+    edges_full = (struct edge_full*) mmap(NULL, part_to_load, PROT_READ, MAP_PRIVATE, fd, 0);
 
-  if(_mmap){
-    edges_full = (struct edge_full*) mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
+//    int fd2 = open("/media/nvme/output_f", O_RDWR|O_CREAT|O_NOATIME|O_LARGEFILE);
+//    fallocate(fd2, 0, 0, NB_EDGES* sizeof(edge_ts));
+//    if(fd2 == -1) {
+//      perror("Failed to open out file");
+//      exit(1);
+//    }
 
-    int fd2 = open("/media/nvme/output_f", O_RDWR|O_CREAT|O_NOATIME|O_LARGEFILE);
-    fallocate(fd2, 0, 0, NB_EDGES* sizeof(edge_ts));
-    if(fd2 == -1) {
-      perror("Failed to open out file");
-      exit(1);
-    }
+    // Data commons cant have the edges_full alloc-ed too
+      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+      if(do_updates) {
+//        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+          for (size_t i = 0; i < NB_EDGES; i++) {
+              edges[i].ts = NB_EDGES;//UINT64_MAX;
+          }
+          printf("NB_EDGES  %lu \n", NB_EDGES);
+      }
+      /*
     edges = (struct edge_ts*) mmap(NULL, NB_EDGES* sizeof(edge_ts), PROT_READ| PROT_WRITE, MAP_SHARED, fd2, 0);
     if(edges == MAP_FAILED){
       perror("Failed mapping");
       exit(1);
     }
-    printf("NB_EDGES  %lu \n",NB_EDGES);
+
+       */
+      printf("NB_EDGES  %lu \n",NB_EDGES);
   }
   else {
     edges_full = (struct edge_full*) malloc(sb.st_size);
@@ -145,9 +173,9 @@ void init_graph_input(bool _mmap){
       assert(b_r!=-1);
       b_read += b_r;
   }
-//      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
     if(do_updates) {
-        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+//        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
         for (size_t i = 0; i < NB_EDGES; i++) {
             edges[i].ts = NB_EDGES;//UINT64_MAX;
         }
@@ -160,7 +188,7 @@ void init_graph_input(bool _mmap){
 
 
 //  assert(NULL!=edges);
-  if(do_updates) {
+  if(!do_updates) {
 //  for(uint32_t i = 0; i <NB_NODES;i++) {
 //      for (uint32_t j = 0; j < degree[i]; j++) {
 //          uint32_t dst = edges_full[adj_offsets[i] + j].dst;

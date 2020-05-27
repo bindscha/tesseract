@@ -80,53 +80,54 @@ void init(const Configuration *configuration) {
 //        }
         case 0:
         {
-//            printf("[INFO] Running %d-Cliques with %d threads\n", bigK, configuration->no_threads);
+            printf("[INFO] Running %d-Cliques with %d threads\n", bigK, configuration->no_threads);
 //            if(do_updates){
 //                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
 ////                do_updates = false;
 //                e_tmp->execute_app();
 //                do_updates = true;
+
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
 //            }
 //            else
-//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
             break;
         }
-//        case 1:
-//        {
-////            printf("[INFO] Running %d-MC with %d threads\n",bigK, configuration->no_threads);
-////            if(do_updates) {
-//////                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
-//////                do_updates = false;
-//////                e_tmp->execute_app();
-//////                do_updates = true;
-//////                printf("Done executing static part\n");
-//////                delete(e_tmp);
+        case 1:
+        {
+//            printf("[INFO] Running %d-MC with %d threads\n",bigK, configuration->no_threads);
+//            if(do_updates) {
+////                StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>*e_tmp =  new StaticEngineDriver<StaticExploreNonSym<VertexId ,MotifCountingE>, MotifCountingE>(configuration->no_threads,false);
+////                do_updates = false;
+////                e_tmp->execute_app();
+////                do_updates = true;
+////                printf("Done executing static part\n");
+////                delete(e_tmp);
 //                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
 //                        configuration->no_threads, false, updateBuf);
-////            }
-//////           else
-////               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
-//            break;
-//        }
-//           case 2:
-//        {
-//            printf("[INFO] Running %d-LCliques with %d threads\n",bigK, configuration->no_threads);
-////            if(do_updates){
+//            }
+////           else
+//               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
+            break;
+        }
+           case 2:
+        {
+            printf("[INFO] Running %d-LCliques with %d threads\n",bigK, configuration->no_threads);
+//            if(do_updates){
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, ColorCliqueE>,ColorCliqueE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
-////            }
-////            else
-////                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
-//            break;
-//        }
+//            }
+//            else
+//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,ColorCliqueE>,ColorCliqueE>(configuration->no_threads,true);
+            break;
+        }
         case 3:
         {
-            printf("[INFO] Running %d-Keyword search with %d threads\n",bigK, configuration->no_threads);
-            if(do_updates){
-                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, KSearchE>,KSearchE,UpdateBuffer>(configuration->no_threads,false, updateBuf);
-            }
-//            else
-//                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,KSearchE>,KSearchE>(configuration->no_threads,false);
+//            printf("[INFO] Running %d-Keyword search with %d threads\n",bigK, configuration->no_threads);
+//            if(do_updates){
+//                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, KSearchE>,KSearchE,UpdateBuffer>(configuration->no_threads,false, updateBuf);
+//            }
+////            else
+////                e = new StaticEngineDriver<StaticExploreNonSym<VertexId,KSearchE>,KSearchE>(configuration->no_threads,false);
             break;
         }
         default: {
@@ -214,17 +215,21 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
 //    if(true){//src % noWorkers == workerId) {
         updateBuf->curr_ts = ts;
 #ifndef USE_MONGO
-        edges[adj_offsets[src] + degree[src]].src = src;
-        edges[adj_offsets[src] + degree[src]].dst = dst;
-        edges[adj_offsets[src] + degree[src]].ts = ts;
 
-        degree[src]++;
-        assert(degree[src] >= 0);
-        edges[adj_offsets[dst] + degree[dst]].src = dst;
-        edges[adj_offsets[dst] + degree[dst]].dst = src;
-        edges[adj_offsets[dst] + degree[dst]].ts = ts;
-        degree[dst]++;
-        assert(degree[dst] >= 0);
+            edges[adj_offsets[src] + degree[src]].src = src;
+            edges[adj_offsets[src] + degree[src]].dst = dst;
+            edges[adj_offsets[src] + degree[src]].ts = ts;
+
+            degree[src]++;
+            if (adj_offsets[dst] < NB_EDGES) {
+                assert(degree[src] >= 0);
+                edges[adj_offsets[dst] + degree[dst]].src = dst;
+                edges[adj_offsets[dst] + degree[dst]].dst = src;
+                edges[adj_offsets[dst] + degree[dst]].ts = ts;
+                degree[dst]++;
+                assert(degree[dst] >= 0);
+            }
+
 #else
         if(src % 8 == workerId){
             edges[adj_offsets[src] + degree[src]].src = src;
@@ -240,10 +245,13 @@ void edge_new(const VertexId src, const VertexId dst, const Timestamp ts) {
 //        if((true)){//
 
 //    if(src % noWorkers  == workerId     ) {
-        updateBuf->updates[updateBuf->get_no_updates()].src = src;
-        updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+
+            updateBuf->updates[updateBuf->get_no_updates()].src = src;
+            updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+
 //        updateBuf->curr_ts = ts;
-        updateBuf->incNoUpdates();
+            updateBuf->incNoUpdates();
+
 //    }
     //printf("Received new edge %u->%u (ts=%u)\n", src, dst, ts);
 }
@@ -271,6 +279,7 @@ void edge_del(const VertexId src, const VertexId dst, const Timestamp ts) {
     if(true){//h_src % e->getNoWorkers()  == e->getWid()     ) {
         updateBuf->updates[updateBuf->get_no_updates()].src = src;
         updateBuf->updates[updateBuf->get_no_updates()].dst = dst;
+
         updateBuf->incNoUpdates();
     }
 //    printf("Received del edge %u->%u (ts=%u)\n", src, dst, ts);

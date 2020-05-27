@@ -154,17 +154,18 @@ public:
         graph_edges[adj_offsets[src] + deg].dst = dst;
         graph_edges[adj_offsets[src] + deg].ts = 0;
           assert(degree[dst]>= 0);
-        deg = degree[dst]; //__sync_fetch_and_add(&degree[dst],1);
-        degree[dst]++;
+//          if(adj_offsets[dst] < NB_EDGES) {
+              deg = degree[dst]; //__sync_fetch_and_add(&degree[dst],1);
+              degree[dst]++;
 //          if(degree[dst] >15402+ 975418){
 //              printf("Problemd with node %u - degree is %lu\n",dst,degree[dst]);
 //          }
 //          assert(degree[dst] <= (15402+ 975418));
 //          assert(degree[0] <= (15402+ 975418));
-        graph_edges[adj_offsets[dst] + deg].src = dst;
-        graph_edges[adj_offsets[dst] + deg].dst = src;
-        graph_edges[adj_offsets[dst] + deg].ts = 0;
-
+              graph_edges[adj_offsets[dst] + deg].src = dst;
+              graph_edges[adj_offsets[dst] + deg].dst = src;
+              graph_edges[adj_offsets[dst] + deg].ts = 0;
+//          }
       }
       wait_b(&xsync_end);
       return total_looped;

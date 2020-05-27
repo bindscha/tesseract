@@ -70,7 +70,7 @@ mongocxx::pool pool{mongocxx::uri{"mongodb://labostrex132.iccluster.epfl.ch:2701
 
 //uint64_t db_time = 0;
 double db_time[56];
-void init(){
+void dbinit(){
     for(int i =0 ;i  < 56;i++)
         db_time[i] = 0;
 }
@@ -84,13 +84,14 @@ uint32_t queryCollection(uint32_t src_id, edge_ts* result, uint64_t v_offset, ui
     for(auto&& doc: curr){
         if(!doc["neighbours"]) continue;
         bsoncxx::array::view subarray{doc["neighbours"].get_array().value};
-        if(subarray.length()  == 0 ) continue;
+        size_t length = subarray.length();
+        if(length  == 0 ) continue;
 
 //        result = (edge_ts*) calloc(subarray.length(), sizeof(edge_ts));
         uint64_t idx = v_offset + degree;
         int i = 0;
 
-        for(uint32_t _idx = degree; _idx < subarray.length(); _idx++){
+        for(uint32_t _idx = degree; _idx < length; _idx++){
             bsoncxx::array::element msg = subarray[_idx];
 //        for (bsoncxx::array::element msg : subarray) {
             if(!msg) {

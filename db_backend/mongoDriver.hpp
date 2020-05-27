@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <chrono>
 
-#include"graph.hpp"
+//#include"graph.hpp"
 #include <mongocxx/pool.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
@@ -27,7 +27,7 @@ extern mongocxx::pool pool;
 //void
 //extern struct edge_ts;
 extern void printDBTIME();
-extern void init();
+extern void dbinit();
 extern void initClientCollection();
  extern uint32_t queryCollection(uint32_t src_id, edge_ts* result, uint64_t offsets, uint32_t degree,int ts_search, mongocxx::client&c, int tid);
 

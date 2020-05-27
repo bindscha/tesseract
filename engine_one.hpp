@@ -32,6 +32,7 @@
 //#define USE_MONGO 1
 #define PFILTER 1
 size_t* no_filter_count;
+size_t* no_dbskips;
 //#define MOTIF 1
 uint64_t CHUNK_SIZE = 2;
 //#define PREFILTER
@@ -78,12 +79,12 @@ class StaticExploreSymmetric{
 
         uint32_t ts;
         FOREACH_EDGE_FWD(v_id, dst)
-            if(degree[dst] < bigK - 1) continue;
-//            if(!algo.pattern_filter(embedding,dst)) continue;
+//            if(degree[dst] < bigK - 1) continue;
+            if(!algo.pattern_filter(embedding,dst)) continue;
             embedding->append(dst);
             const uint32_t noV = embedding->no_vertices();
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
-            const bool filter = noV  == ((noV)* (noV -1 ))/2;
+            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
 //            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
 //            algo.filter(embedding);
             if(filter) {
@@ -277,15 +278,23 @@ public:
         e1 = e1 | (uint64_t) ((*embedding)[1]);
 
         FOREACH_EDGE_TS(v_id, dst, ts)
-//            no_filter_count[tid]++;
             no_filter_count[tid]++;
+//            no_filter_count[tid]++;
             bool skip = false;
 #ifdef USE_MONGO
-            if(dst % 8 != 0)
-            if(inMem[dst] < embedding->max_ts()) {
-                degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst], embedding->max_ts(), c,tid);
+            if( ts > inMem[dst] && dst % 8 != 0) {
+//                if (inMem[dst] < embedding->max_ts()) {
+                no_filter_count[tid]++;
+
+                degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst], embedding->max_ts(), c,
+                                              tid);
                 inMem[dst] = embedding->max_ts();
+//                }
             }
+                else{
+                    no_dbskips[tid]++;
+                }
+
 #endif
 #ifdef PFILTER
 #ifdef COUNT_TIME
@@ -603,7 +612,7 @@ public:
         e1 = e1 | (uint64_t) ((*embedding)[1]);
         FOREACH_EDGE_TS(v_id, dst, ts)
 //        printf("Exploring %u from %u\n", dst,v_id);
-//            no_filter_count[tid]++;
+            no_filter_count[tid]++;
             if(embedding->contains(dst))continue;
 
                 if(ts == embedding->max_ts() && dst < embedding->first()){
@@ -964,12 +973,12 @@ public:
         algo.setItemsFound(no_triangles);
         printf("[INFO Driver] Found %lu\n",no_triangles);
         size_t total_count  = 0;
-        for(int i  = 0; i < no_threads; i++){
-            total_count += no_filter_count[i];
-            no_filter_count[i] = 0;
-        }
-
-        printf("Total explorations %lu\n", total_count);
+//        for(int i  = 0; i < no_threads; i++){
+//            total_count += no_filter_count[i];
+//            no_filter_count[i] = 0;
+//        }
+//
+//        printf("Total explorations %lu\n", total_count);
         algo.output_final();
     }
 };
@@ -1005,9 +1014,10 @@ begin:
 
 #ifdef USE_MONGO
         auto mongo_c = pool.acquire();
+
 #endif
 //TODO uncomment when running GKS
-
+/*
     for(uint32_t i = 0; i < no_active;i++){
 
 
@@ -1025,7 +1035,7 @@ begin:
         }
 
     wait_b(&xsync_end);
-
+*/
 
 //        if(tid == 0 ) algo.printMap();
         while(curr_item < no_active){
@@ -1037,17 +1047,23 @@ begin:
                 src = uBuf->updates[thread_work[tid].start].src;
                 dst = uBuf->updates[thread_work[tid].start].dst;
 
-
+                if(src > dst) continue;
 
 //                if(degree[src] < bigK -1 || degree[dst] < bigK - 1)continue;
 #ifdef USE_MONGO
-                if(src % 8 != 0)
-                    if(exploreEngine->inMem[src] < uBuf->curr_ts) {
-                        degree[src] = queryCollection(src, edges, adj_offsets[src], degree[src],  uBuf->curr_ts,
-                                                      *mongo_c,tid);
-                        exploreEngine->inMem[src] = uBuf->curr_ts;
-                    }
+//                if(src % 8 != 0) {
+//                    if (exploreEngine->inMem[src] < uBuf->curr_ts) {
+//
+//                        no_filter_count[tid]++;
+//                        degree[src] = queryCollection(src, edges, adj_offsets[src], degree[src], uBuf->curr_ts,
+//                                                      *mongo_c, tid);
+//                        exploreEngine->inMem[src] = uBuf->curr_ts;
+//                    } else {
+//                        no_dbskips[tid]++;
+//                    }
+//                }
 #endif
+
 #ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,src)) {
 
@@ -1057,14 +1073,20 @@ begin:
 #endif
                 embedding.append(src);
 #ifdef USE_MONGO
-                if(dst % 8 != 0)
-                    if(exploreEngine->inMem[dst] < uBuf->curr_ts) {
+//                if(dst % 8 != 0) {
+//                    if (exploreEngine->inMem[dst] < uBuf->curr_ts) {
+//
+//                        no_filter_count[tid]++;
+//                        degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst], uBuf->curr_ts,
+//                                                      *mongo_c, tid);
+//                        exploreEngine->inMem[dst] = uBuf->curr_ts;
+//                    }
+//                    else{
+//                        no_dbskips[tid]++;
+//                    }
+//
+//                }
 
-
-                        degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst],  uBuf->curr_ts,
-                                                      *mongo_c,tid);
-                        exploreEngine->inMem[dst] =uBuf->curr_ts;
-                    }
 #endif
 #ifdef PFILTER
                 if(!algo.pattern_filter(&embedding,dst)) {
@@ -1128,6 +1150,7 @@ public:
         w_id = wid;
         no_workers = noWorker;
         no_filter_count = (size_t*) calloc(no_threads, sizeof(size_t));
+//        no_dbskips = (size_t*) calloc(no_threads, sizeof(size_t));
         exploreEngine=  new E(nb_threads);
         uBuf = uB;
     }
@@ -1157,11 +1180,31 @@ public:
         size_t no_batches =0;
         wait_b(&uBuf->updates_consumed);
         double total_time = 0;
-
+#ifdef USE_MONGO
+//        dbInit();
+#endif
         while(do_run){
             wait_b(&uBuf->updates_ready);
             no_active = uBuf->get_no_updates();
 
+#ifdef USE_MONGO
+
+            auto mongo_c = pool.acquire();
+                for(uint32_t i = 0; i < no_active;i++){
+
+                    uint32_t src = uBuf->updates[i].src;
+                    if(src % 8 != 0) {
+                    if (exploreEngine->inMem[src] < uBuf->curr_ts) {
+
+
+                        degree[src] = queryCollection(src, edges, adj_offsets[src], degree[src], uBuf->curr_ts,
+                                                      *mongo_c, 0);
+                        exploreEngine->inMem[src] = uBuf->curr_ts;
+                    }
+
+                 }
+            }
+#endif
             curr_item = 0;
             auto start = std::chrono::high_resolution_clock::now();
             compute(0);
@@ -1193,13 +1236,16 @@ public:
 
             exploreEngine->updateCaches();
             size_t total_count_batch = 0;
-
+            size_t total_skips = 0;
             for(int i  = 0; i < no_threads; i++){
                 total_count_batch += no_filter_count[i];
                 no_filter_count[i] = 0;
+
+//                total_skips += no_dbskips[i];
+//                no_dbskips[i] =0 ;
             }
 
-            printf("Total explorations BATCH %lu\n", total_count_batch );
+            printf("Total explorations BATCH %lu %lu\n", total_count_batch ,total_skips);
 
 
             wait_b(&uBuf->updates_consumed);

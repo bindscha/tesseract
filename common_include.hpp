@@ -31,7 +31,7 @@
 #include <forward_list>
 #include <iostream>
 
-#define bigK 4
+#define bigK 3
 
 
 
