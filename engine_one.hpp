@@ -33,7 +33,7 @@
 #define PFILTER 1
 size_t* no_filter_count;
 size_t* no_dbskips;
-//#define MOTIF 1
+#define MOTIF 1
 uint64_t CHUNK_SIZE = 2;
 //#define PREFILTER
 struct thread_work_t{
@@ -844,15 +844,15 @@ class StaticEngineDriver: public EngineDriver{
 #endif
 //                std::cout << "[TIME] Batch process time: " << diff.count() << " seconds\n";
 //                if(degree[src] < bigK-1){
-                if(!algo.pattern_filter(&embedding,src))  {
-#ifdef COUNT_TIME
-
-                    auto end2 = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> diff = end2 - start2;
-                    time_prefilter += diff.count();
-#endif
-                    continue;
-            }
+//                if(!algo.pattern_filter(&embedding,src))  {
+//#ifdef COUNT_TIME
+//
+//                    auto end2 = std::chrono::high_resolution_clock::now();
+//                    std::chrono::duration<double> diff = end2 - start2;
+//                    time_prefilter += diff.count();
+//#endif
+//                    continue;
+//            }
 #ifdef COUNT_TIME
                 auto end2 = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> diff = end2 - start2;
@@ -863,15 +863,15 @@ class StaticEngineDriver: public EngineDriver{
                 start2 = std::chrono::high_resolution_clock::now();
 #endif
 //                if(degree[dst] < bigK-1){
-                if( !algo.pattern_filter(&embedding,dst)) {
-#ifdef COUNT_TIME
-                     end2 = std::chrono::high_resolution_clock::now();
-                     diff = end2 - start2;
-                    time_prefilter += diff.count();
-#endif
-                    embedding.pop();
-                    continue;
-                }
+//                if( !algo.pattern_filter(&embedding,dst)) {
+//#ifdef COUNT_TIME
+//                     end2 = std::chrono::high_resolution_clock::now();
+//                     diff = end2 - start2;
+//                    time_prefilter += diff.count();
+//#endif
+//                    embedding.pop();
+//                    continue;
+//                }
 //                 end2 = std::chrono::high_resolution_clock::now();
 //                 diff = end2 - start2;
 //                time_prefilter += diff.count();
@@ -926,6 +926,7 @@ public:
         init_barrier(&xsync_end, no_threads);
         per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
         thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
+        CHUNK_SIZE = NB_EDGES;
 //        embedding_array = (Embedding<VertexId>*) calloc(no_threads, sizeof(Embedding<VertexId>));
         symmetric = symm;
         w_id = wid;

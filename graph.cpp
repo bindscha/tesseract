@@ -173,9 +173,9 @@ void init_graph_input(bool _mmap){
       assert(b_r!=-1);
       b_read += b_r;
   }
-      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+//      edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
     if(do_updates) {
-//        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
+        edges = (struct edge_ts*) calloc(sizeof(edge_ts) ,NB_EDGES);
         for (size_t i = 0; i < NB_EDGES; i++) {
             edges[i].ts = NB_EDGES;//UINT64_MAX;
         }
@@ -207,7 +207,7 @@ void init_graph_input(bool _mmap){
 //    exit(0);
 
 //TODO PAralelize, too slow for bigger graphs
-      if (!do_updates) {
+      if (do_updates) {
 #pragma omp parallel for num_threads(56)
           for (uint32_t i = 0; i < NB_NODES; i++) {
               for (uint32_t j = 0; j < degree[i]; j++) {

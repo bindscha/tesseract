@@ -4,6 +4,7 @@
 
 
 inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<VertexId> *embedding) {
+#ifdef EDGE_TIMESTAMPS
 //    uint32_t i = 0;
     bool foundNeighbour = false;
     Timestamp n_ts;
@@ -57,6 +58,7 @@ inline bool canonic_check_r2_middle(const uint32_t v, const Embedding<VertexId> 
         else
         if(foundNeighbour && u > v &&( n_ts == embedding->max_ts() || ( n_ts < embedding->max_ts() && u != (*embedding)[1] ) )) return false;
     }
+#endif
     return true;
 }
 

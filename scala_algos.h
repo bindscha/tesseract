@@ -20,9 +20,10 @@ class ScalaAlgo {//}; public  Algorithm<Embedding<uint32_t>> {
         for(int i = 0; i < embedding->no_vertices(); i++){
             e->vertices[i] =((*embedding)[0]);
         }
+#ifdef EDGE_TIMESTAMPS
         e->ts_mat = embedding->max_ts();
         e->ts = embedding->max_ts();
-
+#endif
     }
 
 public:

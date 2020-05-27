@@ -224,10 +224,16 @@ public:
     const V& operator[] (size_t idx) const {
         return vertices_[idx];
     }
-
+#ifdef EDGE_TIMESTAMPS
     inline void set_max_ts(Timestamp ts){
         max_ts_ = ts;
     }
+#else
+    inline void set_max_ts(Timestamp ts){
+
+    }
+
+#endif
     inline void append(V vertex) {
 //        _append(vertex);
         vertices_[no_vertices_++] = vertex;
@@ -296,6 +302,10 @@ public:
 #ifdef EDGE_TIMESTAMPS
     inline const Timestamp max_ts() const{
         return max_ts_;
+    }
+#else
+    inline const Timestamp max_ts() const{
+        return 0;
     }
 #endif
 
@@ -425,6 +435,19 @@ public:
         } else {
             return false;
         }
+    }
+#else
+    inline const size_t old_vertex_degree_at_index(size_t idx) const{
+        return 0;
+    }
+    inline const size_t old_vertex_degree(V vertex) {
+        return 0;
+    }
+    inline const bool edge_at_indices_is_new(const size_t src_idx,const size_t dst_idx) const{
+        return false;
+    }
+    inline const bool edge_is_new(V src, V dst) {
+        return false;
     }
 #endif
 

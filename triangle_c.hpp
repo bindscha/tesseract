@@ -32,12 +32,13 @@ public:
     inline  bool filter( const Embedding<uint32_t>* embedding) const  {
         if(embedding->no_vertices() < bigK) return true;
         uint32_t dst,ts;
-
+#ifdef EDGE_TIMESTAMPS
         FOREACH_EDGE_TS(embedding->last(),dst,ts)
 //                if(ts <=set->ts_max)
          if( ts <= embedding->max_ts())
                  if(dst ==  embedding->first() ) return true;
         ENDFOR
+#endif
         return false;
 
 
