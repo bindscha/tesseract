@@ -926,7 +926,7 @@ public:
         init_barrier(&xsync_end, no_threads);
         per_thread_data = (size_t *) calloc(no_threads, sizeof(size_t));
         thread_work = (thread_work_t *) calloc(no_threads, sizeof(thread_work_t));
-        CHUNK_SIZE = NB_EDGES;
+//        CHUNK_SIZE = NB_EDGES;
 //        embedding_array = (Embedding<VertexId>*) calloc(no_threads, sizeof(Embedding<VertexId>));
         symmetric = symm;
         w_id = wid;

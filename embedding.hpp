@@ -8,7 +8,7 @@
 #include "graph.hpp"
 
 
-#define EDGE_TIMESTAMPS
+//#define EDGE_TIMESTAMPS
 
 #define MAX_SIZE 8
 typedef uint32_t Edges;

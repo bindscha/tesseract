@@ -90,7 +90,7 @@ void init(const Configuration *configuration) {
 //                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
 //            }
 //            else
-//                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
+                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
             break;
         }
         case 1:
@@ -103,8 +103,8 @@ void init(const Configuration *configuration) {
 ////                do_updates = true;
 ////                printf("Done executing static part\n");
 ////                delete(e_tmp);
-                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
-                        configuration->no_threads, false, updateBuf);
+//                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
+//                        configuration->no_threads, false, updateBuf);
 //            }
 ////           else
 //               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);
