@@ -81,17 +81,17 @@ void init(const Configuration *configuration) {
         case 0:
         {
             printf("[INFO] Running %d-Cliques with %d threads\n", bigK, configuration->no_threads);
-//            if(do_updates){
-//                StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
-////                do_updates = false;
-//                e_tmp->execute_app();
-//                do_updates = true;
+/* //           if(do_updates){
+   //             StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>* e_tmp = new   StaticEngineDriver<StaticExploreSymmetric<VertexId , CliqueFindE>, CliqueFindE>(configuration->no_threads,true);
+   //             do_updates = false;
+    //            e_tmp->execute_app();
+    //            do_updates = true;
 
-//                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
-//            }
+                e = new DynamicEngineDriver<DynamicExploreSymmetric<VertexId, CliqueFindE>,CliqueFindE,UpdateBuffer>(configuration->no_threads,true, updateBuf);
+     //       }
 //            else
-                e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
-            break;
+ //               e = new StaticEngineDriver<StaticExploreSymmetric<VertexId,CliqueFindE>,CliqueFindE>(configuration->no_threads,true);
+   */         break;
         }
         case 1:
         {
@@ -103,8 +103,8 @@ void init(const Configuration *configuration) {
 ////                do_updates = true;
 ////                printf("Done executing static part\n");
 ////                delete(e_tmp);
-//                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
-//                        configuration->no_threads, false, updateBuf);
+                e = new DynamicEngineDriver<DynamicExploreNonSym<VertexId, MotifCountingE>, MotifCountingE, UpdateBuffer>(
+                        configuration->no_threads, false, updateBuf);
 //            }
 ////           else
 //               e = new StaticEngineDriver<StaticExploreNonSym<VertexId,MotifCountingE>,MotifCountingE>(configuration->no_threads,false);

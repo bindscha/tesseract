@@ -101,6 +101,7 @@ public:
       // one for accumulating updates while updates from other are processed
       uint64_t i = 0;
       uint64_t equals = 0;
+      // This was initially used to shuffle updates but was moved to tesseract_Driver.cpp
 //      if(shuffle)
 //        shuffle_edge_idx(_NB_EDGES);
 
@@ -122,15 +123,15 @@ public:
     }
     size_t preload_edges_before_update(edge_full* e, int tid, edge_ts* graph_edges, int no_threads, const std::unordered_set<uint64_t>&update_idx){
         wait_b(&xsync_begin);
-
-      size_t num = NB_EDGES / no_threads;
+      size_t no_edges = NB_EDGES;
+      size_t num = no_edges / no_threads;
 
       size_t start = (size_t)tid *num;
       size_t stop = start + num;
-      if(tid == no_threads - 1) stop =  NB_EDGES;
+      if(tid == no_threads - 1) stop =  no_edges;
         size_t total_looped = 0;
 //      for(;start < stop && total_looped  < NB_EDGES - 10000000;total_looped++){
-          for(;start < stop && total_looped  < NB_EDGES;total_looped++){
+          for(;start < stop && total_looped  < no_edges ;total_looped++){
               if(update_idx.count(total_looped) != 0 ) continue;
         if(e[total_looped].src >e[total_looped].dst ){//->at(total_looped)].dst) {
             continue;

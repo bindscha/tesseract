@@ -278,13 +278,12 @@ public:
         e1 = e1 | (uint64_t) ((*embedding)[1]);
 
         FOREACH_EDGE_TS(v_id, dst, ts)
-            no_filter_count[tid]++;
 //            no_filter_count[tid]++;
             bool skip = false;
 #ifdef USE_MONGO
             if( ts > inMem[dst] && dst % 8 != 0) {
 //                if (inMem[dst] < embedding->max_ts()) {
-                no_filter_count[tid]++;
+ //               no_filter_count[tid]++;
 
                 degree[dst] = queryCollection(dst, edges, adj_offsets[dst], degree[dst], embedding->max_ts(), c,
                                               tid);
@@ -1238,16 +1237,16 @@ public:
             exploreEngine->updateCaches();
             size_t total_count_batch = 0;
             size_t total_skips = 0;
-            for(int i  = 0; i < no_threads; i++){
+/*Debugging to count number of explores with and w/o filter 
+ * for(int i  = 0; i < no_threads; i++){
                 total_count_batch += no_filter_count[i];
                 no_filter_count[i] = 0;
 
 //                total_skips += no_dbskips[i];
 //                no_dbskips[i] =0 ;
             }
-
             printf("Total explorations BATCH %lu %lu\n", total_count_batch ,total_skips);
-
+*/
 
             wait_b(&uBuf->updates_consumed);
         }
