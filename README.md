@@ -9,7 +9,7 @@ Tesseract takes a graph in the form of an adjacency list with two input files:
 - File containing offsets in the edgefile. For each vertex ID (Starting with 0), there is an offset pointing to its neighbours - offsetFile
 
 ### Reading the input in code
-TODO describer where is input read and the caveats.
+The input is read in `graph.cpp`. The vertices are assumed to be `uint32_t` values and an edge is represented with a source and destination vertex. `edges_full` stores the input graph in memory. `edges_ts` is an edge with an added timestamp and this is used only in update mode. 
 
 ## Compilation
 Create cmake-build directory and `cd` into ti. Run `cmake ../; make`.
