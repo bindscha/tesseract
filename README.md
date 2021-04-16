@@ -88,3 +88,11 @@ commenting out every reference to `Static driver` was needed. This was all done 
 #Computation on preloaded part of the graph
 If you uncomment the calls to the static engine in the if branch when doing updates, there will be computation performed on the preloaded part of the graph.
 For updates however, especially for big graphs, we recommend leaving this commented out. 
+
+#Other tips
+On big machines ,it is beneficial to manage the dataplacement on NUMA nodes and pin the threads to cores with taskset.  
+For example, running 4 Cliques on Mico (which is a small graph) on a big machine with 1TB of RAM and 56 threads with
+
+` numactl --interleave=all taskset -c 0-55 ./libtesseract -f /media/nvme/osdi_inputs/mico-sorted -d /media/nvme/osdi_inputs/mico-sorted_offsets -n 100000 -a 0 -t 56` took 11s.
+Without `taskset` it took >300s.
+

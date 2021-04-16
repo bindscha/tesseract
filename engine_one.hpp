@@ -86,7 +86,7 @@ class StaticExploreSymmetric{
             //TODO Missing call to R2 check. Will work for Cliques but might not for other algos
             const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
 //            const bool filter =embedding->no_edges()  == ((embedding->no_vertices())* (embedding->no_vertices() -1 ))/2;
-//            algo.filter(embedding);
+     //      const bool filter =  algo.filter(embedding);
             if(filter) {
                 if(step < bigK - 1 ){
                     explore_sym(embedding, step + 1, tid);
